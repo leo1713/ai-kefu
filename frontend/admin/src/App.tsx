@@ -1,5 +1,6 @@
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import Agents from './pages/Agents'
+import ChatTest from './pages/ChatTest'
 import Conversations from './pages/Conversations'
 import Dashboard from './pages/Dashboard'
 import Knowledge from './pages/Knowledge'
@@ -22,6 +23,7 @@ export default function App() {
               { to: '/visitors', label: '访客管理' },
               { to: '/staff', label: '客服管理' },
               { to: '/workflows', label: '工作流' },
+              { to: '/chat-test', label: '聊天测试' },
             ].map(({ to, label }) => (
               <li key={to}>
                 <Link
@@ -43,9 +45,11 @@ export default function App() {
             <Route path="/visitors" element={<Visitors />} />
             <Route path="/staff" element={<Staff />} />
             <Route path="/workflows" element={<Workflows />} />
+            <Route path="/chat-test" element={<ChatTest />} />
           </Routes>
         </main>
       </div>
     </BrowserRouter>
   )
 }
+

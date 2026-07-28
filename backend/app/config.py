@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     # Claude
     anthropic_api_key: str = ""
+    anthropic_base_url: str = ""
 
     # JWT
     jwt_algorithm: str = "HS256"

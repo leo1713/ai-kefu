@@ -62,13 +62,13 @@
 
 | ID | 行为描述 | 验证命令 | 状态 |
 |----|---------|---------|------|
-| 1.2.1 | Claude SDK 集成，单元测试 Mock 通过 | `cd backend && pytest tests/unit/test_ai/ -v` | ⬜ |
-| 1.2.2 | Agent 模型和配置，seed 默认 Agent 写入数据库 | `cd backend && pytest tests/integration/test_api/test_agents.py -v` | ⬜ |
-| 1.2.3 | `POST /api/v1/chat/completion` 返回流式回复 | `curl -sf -X POST http://localhost:8000/api/v1/chat/completion -d '{"message":"你好","visitor_id":"test"}' \| grep "chat.completed"` | ⬜ |
-| 1.2.4 | SSE 流式响应前端可逐字显示 | 浏览器打开测试页，输入消息可见逐字输出 | ⬜ |
-| 1.2.5 | 消息历史写入数据库 | `cd backend && pytest tests/integration/test_api/test_chat.py::test_message_persisted -v` | ⬜ |
-| 1.2.6 | 连续对话能记住上下文（最近10轮） | `cd backend && pytest tests/unit/test_services/test_chat_service.py::test_context_memory -v` | ⬜ |
-| 1.2.7 | API Key 无效/超时返回统一错误格式 | `cd backend && pytest tests/unit/test_services/test_chat_service.py::test_error_handling -v` | ⬜ |
+| 1.2.1 | Claude SDK 集成，单元测试 Mock 通过 | `cd backend && pytest tests/unit/test_ai/ -v` | ✅ |
+| 1.2.2 | Agent 模型和配置，seed 默认 Agent 写入数据库 | `cd backend && pytest tests/integration/test_api/test_agents.py -v` | ✅ |
+| 1.2.3 | `POST /api/v1/chat/completion` 返回流式回复 | `curl -sf -X POST http://localhost:8000/api/v1/chat/completion -d '{"message":"你好","visitor_id":"test"}' \| grep "chat.completed"` | ✅ |
+| 1.2.4 | SSE 流式响应前端可逐字显示 | 浏览器打开测试页，输入消息可见逐字输出 | ✅ |
+| 1.2.5 | 消息历史写入数据库 | `cd backend && pytest tests/integration/test_api/test_chat.py::test_message_persisted -v` | ✅ |
+| 1.2.6 | 连续对话能记住上下文（最近10轮） | `cd backend && pytest tests/unit/test_services/test_chat_service.py::test_context_memory -v` | ✅ |
+| 1.2.7 | API Key 无效/超时返回统一错误格式 | `cd backend && pytest tests/unit/test_services/test_chat_service.py::test_error_handling -v` | ✅ |
 
 > **状态说明：** ⬜ 未开始 · 🔄 进行中 · 🚫 阻塞（见遗留问题） · ✅ 已完成
 
@@ -248,28 +248,29 @@
 
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
-**最后更新：** 2026-07-26  
-**当前 Sprint：** Sprint 1.1 全部完成 ✅  
-**测试状态：** 1 passed（tests/unit/test_health.py），make check 全绿
+**最后更新：** 2026-07-28  
+**当前 Sprint：** Sprint 1.2 全部完成 ✅ → 下一步 Sprint 1.3  
+**测试状态：** 18 passed，make check 全绿
 
 ### 本次完成
 
-- 任务1.1.1 ✅：Poetry + FastAPI 后端初始化，完整目录结构，/health 接口
-- 任务1.1.2 ✅：Vite + React 19 + TypeScript + Tailwind 4 + Zustand 5，7个页面骨架
-- 任务1.1.3 ✅：Docker Compose 4服务编排（postgres + redis + api + frontend），代理 7897 通
-- 任务1.1.4 ✅：Visitor/Conversation/Message/Agent/Staff/Workflow 模型，Alembic 迁移已应用
-- 任务1.1.5 ✅：GET /health → {"status":"ok"}
-- 任务1.1.6 ✅：Makefile 16个命令全部可执行
-- 任务1.1.7 ✅：make check（ruff + mypy 29文件 + pytest + check-arch.sh 7项）全通过
+- 任务1.2.1 ✅：ClaudeClient（complete/stream_text）+ 6个 Mock 单元测试
+- 任务1.2.2 ✅：AgentService（CRUD + seed_default_agent）+ 7个集成测试
+- 任务1.2.3 ✅：POST /api/v1/chat/completion SSE流式回复，ANTHROPIC_BASE_URL 支持
+- 任务1.2.4 ✅：前端 /chat-test 页面，浏览器逐字流式显示验证通过
+- 任务1.2.5 ✅：消息写入 DB，message_id UUID 验证
+- 任务1.2.6 ✅：get_recent_messages 取最近20条（10轮），传入 Claude
+- 任务1.2.7 ✅：ExternalServiceError → chat.error SSE 事件，2个错误场景测试
 
 ### 遗留问题
 
-- **Docker Hub 需代理**：`make dev` 必须在 `export http_proxy=http://127.0.0.1:7897` 环境下运行，否则无法拉取镜像。无代理时用 `make dev-local`。
+- **Docker Hub 需代理**：`make dev` 需 `export http_proxy=http://127.0.0.1:7897`，无代理用 `make dev-local`
+- **聊天测试页 Vite 端口**：当前占用5173，dev server 在5174
 
 ### 下一步行动
 
-1. 开始 Sprint 1.2：AI 对话核心
-2. 第一个任务1.2.1：Claude SDK 集成，单元测试 Mock 通过 — 验证命令：`cd backend && pytest tests/unit/test_ai/ -v`
+1. 开始 Sprint 1.3：知识库 RAG
+2. 第一个任务1.3.1：pgvector 扩展启用，向量表迁移通过 — 验证命令：`make migrate && cd backend && python -c "from app.models import KnowledgeChunk; print('OK')"`
 
 ---
 

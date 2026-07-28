@@ -5,6 +5,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.v1.agents import router as agents_router
+from app.api.v1.chat import router as chat_router
 from app.config import settings
 from app.core.exceptions import AppException
 from app.core.logging import configure_logging, logger
@@ -48,3 +50,7 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+app.include_router(agents_router, prefix="/api/v1")
+app.include_router(chat_router, prefix="/api/v1")
