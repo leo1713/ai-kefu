@@ -85,13 +85,13 @@
 
 | ID | 行为描述 | 验证命令 | 状态 |
 |----|---------|---------|------|
-| 1.3.1 | pgvector 扩展启用，向量表迁移通过 | `make migrate && cd backend && python -c "from app.models import KnowledgeChunk; print('OK')"` | ⬜ |
-| 1.3.2 | `POST /api/v1/knowledge/upload` 接受 PDF/TXT/MD 文件 | `curl -sf -F "file=@tests/fixtures/sample.pdf" http://localhost:8000/api/v1/knowledge/upload \| python -c "import sys,json; assert json.load(sys.stdin)['id']"` | ⬜ |
-| 1.3.3 | 文档自动分片，一篇文档切成多个 chunk | `cd backend && pytest tests/unit/test_services/test_rag_service.py::test_document_chunking -v` | ⬜ |
-| 1.3.4 | chunk 向量化写入 pgvector | `cd backend && pytest tests/integration/test_api/test_knowledge.py::test_embedding_stored -v` | ⬜ |
-| 1.3.5 | `GET /api/v1/knowledge/search?q=xxx` 返回相关 chunk | `curl -sf "http://localhost:8000/api/v1/knowledge/search?q=退款" \| python -c "import sys,json; assert len(json.load(sys.stdin)['results'])>0"` | ⬜ |
-| 1.3.6 | 聊天时 AI 回答引用知识库内容 | `cd backend && pytest tests/integration/test_api/test_chat.py::test_rag_grounded_answer -v` | ⬜ |
-| 1.3.7 | 知识库 CRUD 接口可用（集合增删改查） | `cd backend && pytest tests/integration/test_api/test_knowledge.py -v` | ⬜ |
+| 1.3.1 | pgvector 扩展启用，向量表迁移通过 | `make migrate && cd backend && python -c "from app.models import KnowledgeChunk; print('OK')"` | ✅ |
+| 1.3.2 | `POST /api/v1/knowledge/upload` 接受 PDF/TXT/MD 文件 | `curl -sf -F "file=@tests/fixtures/sample.pdf" http://localhost:8000/api/v1/knowledge/upload \| python -c "import sys,json; assert json.load(sys.stdin)['id']"` | ✅ |
+| 1.3.3 | 文档自动分片，一篇文档切成多个 chunk | `cd backend && pytest tests/unit/test_services/test_rag_service.py::test_document_chunking -v` | ✅ |
+| 1.3.4 | chunk 向量化写入 pgvector | `cd backend && pytest tests/integration/test_api/test_knowledge.py::test_embedding_stored -v` | ✅ |
+| 1.3.5 | `GET /api/v1/knowledge/search?q=xxx` 返回相关 chunk | `curl -sf "http://localhost:8000/api/v1/knowledge/search?q=退款" \| python -c "import sys,json; assert len(json.load(sys.stdin)['results'])>0"` | ✅ |
+| 1.3.6 | 聊天时 AI 回答引用知识库内容 | `cd backend && pytest tests/integration/test_api/test_chat.py::test_rag_grounded_answer -v` | ✅ |
+| 1.3.7 | 知识库 CRUD 接口可用（集合增删改查） | `cd backend && pytest tests/integration/test_api/test_knowledge.py -v` | ✅ |
 
 > **状态说明：** ⬜ 未开始 · 🔄 进行中 · 🚫 阻塞（见遗留问题） · ✅ 已完成
 
@@ -249,28 +249,28 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-28  
-**当前 Sprint：** Sprint 1.2 全部完成 ✅ → 下一步 Sprint 1.3  
-**测试状态：** 18 passed，make check 全绿
+**当前 Sprint：** Sprint 1.3 全部完成 ✅ → 下一步 Sprint 1.4  
+**测试状态：** 28 passed，make check 全绿
 
 ### 本次完成
 
-- 任务1.2.1 ✅：ClaudeClient（complete/stream_text）+ 6个 Mock 单元测试
-- 任务1.2.2 ✅：AgentService（CRUD + seed_default_agent）+ 7个集成测试
-- 任务1.2.3 ✅：POST /api/v1/chat/completion SSE流式回复，ANTHROPIC_BASE_URL 支持
-- 任务1.2.4 ✅：前端 /chat-test 页面，浏览器逐字流式显示验证通过
-- 任务1.2.5 ✅：消息写入 DB，message_id UUID 验证
-- 任务1.2.6 ✅：get_recent_messages 取最近20条（10轮），传入 Claude
-- 任务1.2.7 ✅：ExternalServiceError → chat.error SSE 事件，2个错误场景测试
+- 任务1.3.1 ✅：pgvector 扩展启用，KnowledgeChunk 向量表（1536维）
+- 任务1.3.2 ✅：POST /knowledge/upload，支持 PDF/TXT/MD，pypdf 文本提取
+- 任务1.3.3 ✅：chunk_text()，500字/块，50字重叠
+- 任务1.3.4 ✅：embed_text() + process_document_chunks()，chunk写入pgvector（空key降级）
+- 任务1.3.5 ✅：GET /knowledge/search，向量搜索 + ILIKE 兜底；修复 Bearer 空key Bug
+- 任务1.3.6 ✅：chat_service 集成 RAG，检索 top-3 注入 system prompt
+- 任务1.3.7 ✅：知识库 CRUD：集合/文档 增删查，软删除
 
 ### 遗留问题
 
-- **Docker Hub 需代理**：`make dev` 需 `export http_proxy=http://127.0.0.1:7897`，无代理用 `make dev-local`
-- **聊天测试页 Vite 端口**：当前占用5173，dev server 在5174
+- **embedding API 未配置**：`EMBEDDING_API_KEY` 为空，向量搜索自动降级到 ILIKE 文本搜索。配置 OpenAI-compatible 端点后可启用真向量搜索
+- **Docker Hub 需代理**：`make dev` 需 `export http_proxy=http://127.0.0.1:7897`
 
 ### 下一步行动
 
-1. 开始 Sprint 1.3：知识库 RAG
-2. 第一个任务1.3.1：pgvector 扩展启用，向量表迁移通过 — 验证命令：`make migrate && cd backend && python -c "from app.models import KnowledgeChunk; print('OK')"`
+1. 开始 Sprint 1.4：企业微信接入
+2. 第一个任务 1.4.1：企业微信应用注册，获取 CorpID/AgentID/Secret（人工步骤）
 
 ---
 

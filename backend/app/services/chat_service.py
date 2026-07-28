@@ -11,7 +11,7 @@ from app.ai.streaming import sse
 from app.config import settings
 from app.core.exceptions import ExternalServiceError
 from app.models.message import Message
-from app.services import conversation_service, visitor_service
+from app.services import conversation_service, rag_service, visitor_service
 from app.services.agent_service import seed_default_agent
 
 logger = structlog.get_logger()
@@ -63,6 +63,13 @@ async def chat_stream(
         visitor_id=str(visitor.id),
     )
 
+    # RAG: retrieve relevant context and inject into system prompt
+    rag_results = await rag_service.search_chunks(db, message, top_k=3)
+    system_prompt = agent.system_prompt
+    if rag_results:
+        context = "\n\n".join(f"[知识库] {r['content']}" for r in rag_results)
+        system_prompt = f"{system_prompt}\n\n以下是相关知识库内容，请优先参考：\n{context}"
+
     client = ClaudeClient(
         api_key=settings.anthropic_api_key,
         base_url=settings.anthropic_base_url,
@@ -72,7 +79,7 @@ async def chat_stream(
     try:
         async for chunk in client.stream_text(
             messages=messages,
-            system=agent.system_prompt,
+            system=system_prompt,
             model=agent.model,
             max_tokens=agent.max_tokens,
         ):
