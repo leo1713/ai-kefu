@@ -1,6 +1,7 @@
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import Agents from './pages/Agents'
 import ChatTest from './pages/ChatTest'
+import ConversationDetail from './pages/ConversationDetail'
 import Conversations from './pages/Conversations'
 import Dashboard from './pages/Dashboard'
 import Knowledge from './pages/Knowledge'
@@ -40,6 +41,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/conversations" element={<Conversations />} />
+            <Route path="/conversations/:id" element={<ConversationDetail />} />
             <Route path="/agents" element={<Agents />} />
             <Route path="/knowledge" element={<Knowledge />} />
             <Route path="/visitors" element={<Visitors />} />

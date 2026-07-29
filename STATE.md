@@ -133,9 +133,9 @@
 |----|---------|---------|------|
 | 1.5.1 | `POST /api/v1/auth/login` 返回 JWT token | `cd backend && pytest tests/integration/test_api/test_auth.py -v` | ✅ |
 | 1.5.2 | 对话列表页面显示所有会话 | 浏览器访问 `/conversations`，页面无报错，列表可见 | ✅ |
-| 1.5.3 | 对话详情页面显示完整消息时间线 | 浏览器点击某会话，消息按时间排列显示 | ⬜ |
-| 1.5.4 | 知识库管理页面可上传/删除文档 | 浏览器上传一个 .txt 文件，列表中出现该文档 | ⬜ |
-| 1.5.5 | Agent 配置页面保存提示词后生效 | 修改提示词保存，重新发消息，AI 回复风格改变 | ⬜ |
+| 1.5.3 | 对话详情页面显示完整消息时间线 | 浏览器点击某会话，消息按时间排列显示 | ✅ |
+| 1.5.4 | 知识库管理页面可上传/删除文档 | 浏览器上传一个 .txt 文件，列表中出现该文档 | ✅ |
+| 1.5.5 | Agent 配置页面保存提示词后生效 | 修改提示词保存，重新发消息，AI 回复风格改变 | ✅ |
 | 1.5.6 | 系统设置页面保存 API Key，加密存储 | `cd backend && pytest tests/integration/test_api/test_admin.py::test_api_key_encrypted -v` | ✅ |
 | 1.5.7 | Nginx + Docker 部署，VPS 上可访问 | `curl -sf https://<域名>/health \| grep ok` | 🔄 |
 
@@ -249,16 +249,14 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-29  
-**当前 Sprint：** Sprint 1.5（进行中，已完成1.5.1/1.5.2/1.5.6）  
+**当前 Sprint：** Sprint 1.5（进行中，已完成1.5.1/1.5.2/1.5.3/1.5.4/1.5.5/1.5.6）  
 **测试状态：** 33 passed，make check 全绿，前端 npm run build ✅
 
 ### 本次完成
 
-- Sprint 1.4 WeCom 框架代码就绪（crypto/client/service/callback），1.4.1-1.4.4 🚫 阻塞（需公网域名）
-- 任务1.5.1 ✅：POST /api/v1/auth/login，bcrypt 哈希，JWT 返回；3个集成测试通过
-- 任务1.5.2 ✅：GET /api/v1/conversations，对话列表页（浏览器验证通过）
-- 任务1.5.6 ✅：POST /admin/settings/api-key，Fernet 加密存储，mask 脱敏返回；修复 _get_fernet 进程级缓存
-- 任务1.5.7 🔄：nginx/nginx.conf（SSL/限流/SSE/SPA路由），scripts/deploy.sh/init-ssl.sh/setup-vps.sh，docker-compose.yml 更新；代码就绪，VPS 部署待执行
+- 任务1.5.3 ✅：ConversationDetail 页面（消息气泡时间线，按时间升序排列）；路由 `/conversations/:id` 已注册
+- 任务1.5.4 ✅：Knowledge 知识库管理页（文档列表 + 上传 PDF/TXT/MD + 删除）；新增 `api/knowledge.ts`
+- 任务1.5.5 ✅：Agents 配置页（Agent 列表 + 内联编辑 name/system_prompt/model/temperature/max_tokens + PATCH 保存）；新增 `api/agents.ts`
 
 ### 遗留问题
 
@@ -270,9 +268,8 @@
 
 ### 下一步行动
 
-1. 继续 Sprint 1.5：任务 1.5.3 — 对话详情页（浏览器点击某会话，消息按时间排列显示）
-2. 然后1.5.4（知识库管理页）、1.5.5（Agent 配置页）
-3. 最后1.5.7 VPS 部署验证 → 完成 Sprint 1.5 → 回来补 Sprint 1.4 企业微信
+1. 任务 1.5.7 — VPS 部署验证：在 VPS 执行 `bash scripts/deploy.sh`，访问 `https://<域名>/health` 确认返回 ok
+2. Sprint 1.5 完成后 → 回来补 Sprint 1.4 企业微信（需先完成1.5.7解除阻塞）
 
 ---
 
