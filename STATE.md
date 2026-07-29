@@ -132,10 +132,10 @@
 | ID | 行为描述 | 验证命令 | 状态 |
 |----|---------|---------|------|
 | 1.5.1 | `POST /api/v1/auth/login` 返回 JWT token | `cd backend && pytest tests/integration/test_api/test_auth.py -v` | ✅ |
-| 1.5.2 | 对话列表页面显示所有会话 | 浏览器访问 `/conversations`，页面无报错，列表可见 | ✅ |
-| 1.5.3 | 对话详情页面显示完整消息时间线 | 浏览器点击某会话，消息按时间排列显示 | ✅ |
-| 1.5.4 | 知识库管理页面可上传/删除文档 | 浏览器上传一个 .txt 文件，列表中出现该文档 | ✅ |
-| 1.5.5 | Agent 配置页面保存提示词后生效 | 修改提示词保存，重新发消息，AI 回复风格改变 | ✅ |
+| 1.5.2 | 对话列表页面显示所有会话 | 浏览器访问 `/conversations`，页面无报错，列表可见 | ✅ 已验收 |
+| 1.5.3 | 对话详情页面显示完整消息时间线 | 浏览器点击某会话，消息按时间排列显示 | ✅ 已验收 |
+| 1.5.4 | 知识库管理页面可上传/删除文档 | 浏览器上传一个 .txt 文件，列表中出现该文档 | ✅ 已验收 |
+| 1.5.5 | Agent 配置页面保存提示词后生效 | 修改提示词保存，重新发消息，AI 回复风格改变 | ✅ 已验收 |
 | 1.5.6 | 系统设置页面保存 API Key，加密存储 | `cd backend && pytest tests/integration/test_api/test_admin.py::test_api_key_encrypted -v` | ✅ |
 | 1.5.7 | Nginx + Docker 部署，VPS 上可访问 | `curl -sf https://<域名>/health \| grep ok` | 🔄 |
 
@@ -249,27 +249,27 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-29  
-**当前 Sprint：** Sprint 1.5（进行中，已完成1.5.1/1.5.2/1.5.3/1.5.4/1.5.5/1.5.6）  
-**测试状态：** 33 passed，make check 全绿，前端 npm run build ✅
+**当前 Sprint：** Sprint 1.5（进行中，已完成1.5.1/1.5.2/1.5.3/1.5.4/1.5.5/1.5.6；1.5.7 代码就绪）  
+**测试状态：** 33 passed，make check 全绿，前端 npm run build ✅  
+**本地验收：** Agent管理页、对话记录列表（5条）、SSE 流式对话 — 全部通过
 
 ### 本次完成
 
-- 任务1.5.3 ✅：ConversationDetail 页面（消息气泡时间线，按时间升序排列）；路由 `/conversations/:id` 已注册
-- 任务1.5.4 ✅：Knowledge 知识库管理页（文档列表 + 上传 PDF/TXT/MD + 删除）；新增 `api/knowledge.ts`
-- 任务1.5.5 ✅：Agents 配置页（Agent 列表 + 内联编辑 name/system_prompt/model/temperature/max_tokens + PATCH 保存）；新增 `api/agents.ts`
+- 任务1.5.2-1.5.5 本地验收通过（浏览器人工验证）
+- `docs/vps-deployment-checklist.md` — 完整的1.5.7 VPS部署前置检查清单（10步）
 
 ### 遗留问题
 
 - **企业微信 1.4.1-1.4.4 阻塞**：需要公网域名完成回调验证。VPS 部署后解除
-- **1.5.7 部署待执行**：代码就绪，用户需在 VPS 执行 `bash scripts/deploy.sh`
+- **1.5.7 部署待执行**：代码就绪，用户需在 VPS 按 `docs/vps-deployment-checklist.md` 执行
 - **Embedding API 未配置**：EMBEDDING_API_KEY 为空，向量搜索降级到 ILIKE
 - **Docker Hub 需代理**：`make dev` 需 `export http_proxy=http://127.0.0.1:7897`
 - **passlib 废弃**：auth_service.py 已改用 bcrypt 直接调用，passlib 依赖可后续清理
 
 ### 下一步行动
 
-1. 任务 1.5.7 — VPS 部署验证：在 VPS 执行 `bash scripts/deploy.sh`，访问 `https://<域名>/health` 确认返回 ok
-2. Sprint 1.5 完成后 → 回来补 Sprint 1.4 企业微信（需先完成1.5.7解除阻塞）
+1. **（需用户操作）** 按 `docs/vps-deployment-checklist.md` 在 VPS 执行部署，验证 `curl https://<域名>/health` 返回 ok → 1.5.7 ✅
+2. 1.5.7 完成后 → Sprint 1.5 关闭 → 开始 Sprint 1.4 企业微信（补任务1.4.1：注册应用获取 CorpID/AgentID/Secret）
 
 ---
 
