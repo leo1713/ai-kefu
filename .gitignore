@@ -28,3 +28,7 @@ Thumbs.db
 
 # Claude internal
 .claude/
+
+# Generated deployment files
+nginx/html/
+nginx/certs/

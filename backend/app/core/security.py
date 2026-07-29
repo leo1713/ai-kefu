@@ -4,14 +4,17 @@ from datetime import UTC
 
 from cryptography.fernet import Fernet
 
+_fernet_instance: Fernet | None = None
+
 
 def _get_fernet() -> Fernet:
+    global _fernet_instance
+    if _fernet_instance is not None:
+        return _fernet_instance
     from app.config import settings
-
-    key = settings.encryption_key
-    if not key:
-        key = base64.urlsafe_b64encode(os.urandom(32)).decode()
-    return Fernet(key.encode() if isinstance(key, str) else key)
+    key = settings.encryption_key or base64.urlsafe_b64encode(os.urandom(32)).decode()
+    _fernet_instance = Fernet(key.encode() if isinstance(key, str) else key)
+    return _fernet_instance
 
 
 def encrypt_str(value: str) -> str:

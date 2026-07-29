@@ -108,10 +108,10 @@
 
 | ID | 行为描述 | 验证命令 | 状态 |
 |----|---------|---------|------|
-| 1.4.1 | 企业微信应用注册，获取 CorpID/AgentID/Secret | 人工验证：企业微信后台可见应用 | ⬜ |
-| 1.4.2 | `GET /api/internal/wecom/callback` 签名校验通过 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_verify_url -v` | ⬜ |
-| 1.4.3 | `POST /api/internal/wecom/callback` 解密接收消息 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_receive_message -v` | ⬜ |
-| 1.4.4 | 系统通过企业微信 API 发送文本回复 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_send_reply -v` | ⬜ |
+| 1.4.1 | 企业微信应用注册，获取 CorpID/AgentID/Secret | 人工验证：企业微信后台可见应用 | 🚫 |
+| 1.4.2 | `GET /api/internal/wecom/callback` 签名校验通过 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_verify_url -v` | 🚫 |
+| 1.4.3 | `POST /api/internal/wecom/callback` 解密接收消息 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_receive_message -v` | 🚫 |
+| 1.4.4 | 系统通过企业微信 API 发送文本回复 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_send_reply -v` | 🚫 |
 | 1.4.5 | 相同 external_userid 的消息关联到同一 Visitor | `cd backend && pytest tests/unit/test_services/test_visitor_service.py::test_get_or_create -v` | ⬜ |
 | 1.4.6 | 图片消息能被识别并生成 AI 回复 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_image_message -v` | ⬜ |
 | 1.4.7 | 相同 MsgId 不重复处理（去重） | `cd backend && pytest tests/unit/test_services/test_wecom_service.py::test_dedup -v` | ⬜ |
@@ -131,13 +131,13 @@
 
 | ID | 行为描述 | 验证命令 | 状态 |
 |----|---------|---------|------|
-| 1.5.1 | `POST /api/v1/auth/login` 返回 JWT token | `cd backend && pytest tests/integration/test_api/test_auth.py -v` | ⬜ |
+| 1.5.1 | `POST /api/v1/auth/login` 返回 JWT token | `cd backend && pytest tests/integration/test_api/test_auth.py -v` | ✅ |
 | 1.5.2 | 对话列表页面显示所有会话 | 浏览器访问 `/conversations`，页面无报错，列表可见 | ⬜ |
 | 1.5.3 | 对话详情页面显示完整消息时间线 | 浏览器点击某会话，消息按时间排列显示 | ⬜ |
 | 1.5.4 | 知识库管理页面可上传/删除文档 | 浏览器上传一个 .txt 文件，列表中出现该文档 | ⬜ |
 | 1.5.5 | Agent 配置页面保存提示词后生效 | 修改提示词保存，重新发消息，AI 回复风格改变 | ⬜ |
-| 1.5.6 | 系统设置页面保存 API Key，加密存储 | `cd backend && pytest tests/integration/test_api/test_admin.py::test_api_key_encrypted -v` | ⬜ |
-| 1.5.7 | Nginx + Docker 部署，VPS 上可访问 | `curl -sf https://<域名>/health \| grep ok` | ⬜ |
+| 1.5.6 | 系统设置页面保存 API Key，加密存储 | `cd backend && pytest tests/integration/test_api/test_admin.py::test_api_key_encrypted -v` | ✅ |
+| 1.5.7 | Nginx + Docker 部署，VPS 上可访问 | `curl -sf https://<域名>/health \| grep ok` | 🔄 |
 
 > **状态说明：** ⬜ 未开始 · 🔄 进行中 · 🚫 阻塞（见遗留问题） · ✅ 已完成
 

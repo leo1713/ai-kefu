@@ -2,7 +2,8 @@
 
 POETRY := $(shell command -v poetry 2>/dev/null || echo $(HOME)/.local/bin/poetry)
 
-.PHONY: help setup dev dev-watch down docker-dev test lint check migrate clean
+.PHONY: help setup dev dev-watch down docker-dev test lint check migrate clean \
+        deploy prod-logs prod-migrate ssl-init
 
 help: ## 显示帮助信息
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -37,7 +38,7 @@ down: ## 停止本地 API 进程
 docker-down: ## 停止 Docker 服务
 	docker compose -f docker-compose.dev.yml down
 
-logs: ## 查看 Docker API 日志
+logs: ## 查看 Docker API 日志（开发）
 	docker compose -f docker-compose.dev.yml logs -f api
 
 test: ## 运行全部测试
@@ -53,7 +54,7 @@ check: ## 完整验证（lint + test）
 	cd backend && $(POETRY) run pytest
 	bash scripts/check-arch.sh
 
-migrate: ## 运行数据库迁移
+migrate: ## 运行数据库迁移（开发）
 	docker compose -f docker-compose.dev.yml run --rm api alembic upgrade head
 
 migration: ## 生成新迁移文件（用法：make migration MSG="描述"）
@@ -64,3 +65,18 @@ shell: ## 进入 API 容器 shell
 
 clean: ## 清理 Docker 资源
 	docker compose -f docker-compose.dev.yml down -v --remove-orphans
+
+# ── 生产部署 ──────────────────────────────────────────────────────────────────
+
+deploy: ## 生产部署（构建前端+启动容器+迁移数据库）
+	bash scripts/deploy.sh
+
+ssl-init: ## 申请 SSL 证书（用法：make ssl-init DOMAIN=your.com EMAIL=you@email.com）
+	bash scripts/init-ssl.sh $(DOMAIN) $(EMAIL)
+
+prod-migrate: ## 生产数据库迁移
+	docker compose run --rm api alembic upgrade head
+
+prod-logs: ## 查看生产日志
+	docker compose logs -f api nginx
+
