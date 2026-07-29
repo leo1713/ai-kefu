@@ -132,7 +132,7 @@
 | ID | 行为描述 | 验证命令 | 状态 |
 |----|---------|---------|------|
 | 1.5.1 | `POST /api/v1/auth/login` 返回 JWT token | `cd backend && pytest tests/integration/test_api/test_auth.py -v` | ✅ |
-| 1.5.2 | 对话列表页面显示所有会话 | 浏览器访问 `/conversations`，页面无报错，列表可见 | ⬜ |
+| 1.5.2 | 对话列表页面显示所有会话 | 浏览器访问 `/conversations`，页面无报错，列表可见 | ✅ |
 | 1.5.3 | 对话详情页面显示完整消息时间线 | 浏览器点击某会话，消息按时间排列显示 | ⬜ |
 | 1.5.4 | 知识库管理页面可上传/删除文档 | 浏览器上传一个 .txt 文件，列表中出现该文档 | ⬜ |
 | 1.5.5 | Agent 配置页面保存提示词后生效 | 修改提示词保存，重新发消息，AI 回复风格改变 | ⬜ |
@@ -248,29 +248,31 @@
 
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
-**最后更新：** 2026-07-28  
-**当前 Sprint：** Sprint 1.3 全部完成 ✅ → 下一步 Sprint 1.4  
-**测试状态：** 28 passed，make check 全绿
+**最后更新：** 2026-07-29  
+**当前 Sprint：** Sprint 1.5（进行中，已完成1.5.1/1.5.2/1.5.6）  
+**测试状态：** 33 passed，make check 全绿，前端 npm run build ✅
 
 ### 本次完成
 
-- 任务1.3.1 ✅：pgvector 扩展启用，KnowledgeChunk 向量表（1536维）
-- 任务1.3.2 ✅：POST /knowledge/upload，支持 PDF/TXT/MD，pypdf 文本提取
-- 任务1.3.3 ✅：chunk_text()，500字/块，50字重叠
-- 任务1.3.4 ✅：embed_text() + process_document_chunks()，chunk写入pgvector（空key降级）
-- 任务1.3.5 ✅：GET /knowledge/search，向量搜索 + ILIKE 兜底；修复 Bearer 空key Bug
-- 任务1.3.6 ✅：chat_service 集成 RAG，检索 top-3 注入 system prompt
-- 任务1.3.7 ✅：知识库 CRUD：集合/文档 增删查，软删除
+- Sprint 1.4 WeCom 框架代码就绪（crypto/client/service/callback），1.4.1-1.4.4 🚫 阻塞（需公网域名）
+- 任务1.5.1 ✅：POST /api/v1/auth/login，bcrypt 哈希，JWT 返回；3个集成测试通过
+- 任务1.5.2 ✅：GET /api/v1/conversations，对话列表页（浏览器验证通过）
+- 任务1.5.6 ✅：POST /admin/settings/api-key，Fernet 加密存储，mask 脱敏返回；修复 _get_fernet 进程级缓存
+- 任务1.5.7 🔄：nginx/nginx.conf（SSL/限流/SSE/SPA路由），scripts/deploy.sh/init-ssl.sh/setup-vps.sh，docker-compose.yml 更新；代码就绪，VPS 部署待执行
 
 ### 遗留问题
 
-- **embedding API 未配置**：`EMBEDDING_API_KEY` 为空，向量搜索自动降级到 ILIKE 文本搜索。配置 OpenAI-compatible 端点后可启用真向量搜索
+- **企业微信 1.4.1-1.4.4 阻塞**：需要公网域名完成回调验证。VPS 部署后解除
+- **1.5.7 部署待执行**：代码就绪，用户需在 VPS 执行 `bash scripts/deploy.sh`
+- **Embedding API 未配置**：EMBEDDING_API_KEY 为空，向量搜索降级到 ILIKE
 - **Docker Hub 需代理**：`make dev` 需 `export http_proxy=http://127.0.0.1:7897`
+- **passlib 废弃**：auth_service.py 已改用 bcrypt 直接调用，passlib 依赖可后续清理
 
 ### 下一步行动
 
-1. 开始 Sprint 1.4：企业微信接入
-2. 第一个任务 1.4.1：企业微信应用注册，获取 CorpID/AgentID/Secret（人工步骤）
+1. 继续 Sprint 1.5：任务 1.5.3 — 对话详情页（浏览器点击某会话，消息按时间排列显示）
+2. 然后1.5.4（知识库管理页）、1.5.5（Agent 配置页）
+3. 最后1.5.7 VPS 部署验证 → 完成 Sprint 1.5 → 回来补 Sprint 1.4 企业微信
 
 ---
 
