@@ -2,9 +2,9 @@
 
 ## 项目状态
 
-- **当前 Phase：** Phase 1 — MVP
-- **Phase 1 状态：** 未开始
-- **整体进度：** 0%
+- **当前 Phase：** Phase 2 — 人工协作
+- **Phase 1 状态：** ✅ 已完成（2026-07-30）
+- **整体进度：** 33%（Phase 1/3 完成）
 
 ---
 
@@ -12,8 +12,8 @@
 
 | Phase | 名称 | 目标 | 预估周期 | 状态 |
 |-------|------|------|----------|------|
-| 1 | MVP | 企业微信 + AI 知识库问答，能真实使用 | 4-6 周 | 🔴 未开始 |
-| 2 | 人工协作 | 转人工 + 客服工作台 + 工具调用 | 3-4 周 | ⬜ 等待 |
+| 1 | MVP | 企业微信 + AI 知识库问答，能真实使用 | 4-6 周 | ✅ 已完成 |
+| 2 | 人工协作 | 转人工 + 客服工作台 + 工具调用 | 3-4 周 | 🔴 进行中 |
 | 3 | 智能增强 | 多 Agent + 工作流 + 数据看板 | 3-4 周 | ⬜ 等待 |
 
 ---
@@ -26,10 +26,10 @@
 
 ### 完成标志
 
-- [ ] 企业微信发消息，3秒内收到 AI 回复
-- [ ] AI 回复内容基于上传的文档（不是瞎编的）
-- [ ] 管理后台可以看到所有对话记录
-- [ ] `make check` 全部通过
+- [x] 企业微信发消息，3秒内收到 AI 回复
+- [x] AI 回复内容基于上传的文档（不是瞎编的）
+- [x] 管理后台可以看到所有对话记录
+- [x] `make check` 全部通过
 
 ---
 
@@ -108,13 +108,13 @@
 
 | ID | 行为描述 | 验证命令 | 状态 |
 |----|---------|---------|------|
-| 1.4.1 | 企业微信应用注册，获取 CorpID/AgentID/Secret | 人工验证：企业微信后台可见应用 | 🚫 |
-| 1.4.2 | `GET /api/internal/wecom/callback` 签名校验通过 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_verify_url -v` | 🚫 |
-| 1.4.3 | `POST /api/internal/wecom/callback` 解密接收消息 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_receive_message -v` | 🚫 |
-| 1.4.4 | 系统通过企业微信 API 发送文本回复 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_send_reply -v` | 🚫 |
-| 1.4.5 | 相同 external_userid 的消息关联到同一 Visitor | `cd backend && pytest tests/unit/test_services/test_visitor_service.py::test_get_or_create -v` | ⬜ |
-| 1.4.6 | 图片消息能被识别并生成 AI 回复 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_image_message -v` | ⬜ |
-| 1.4.7 | 相同 MsgId 不重复处理（去重） | `cd backend && pytest tests/unit/test_services/test_wecom_service.py::test_dedup -v` | ⬜ |
+| 1.4.1 | 企业微信应用注册，获取 CorpID/AgentID/Secret | 人工验证：企业微信后台可见应用 | ✅ |
+| 1.4.2 | `GET /api/internal/wecom/callback` 签名校验通过 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_verify_url -v` | ✅ |
+| 1.4.3 | `POST /api/internal/wecom/callback` 解密接收消息 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_receive_message -v` | ✅ |
+| 1.4.4 | 系统通过企业微信 API 发送文本回复 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_send_reply -v` | ✅ |
+| 1.4.5 | 相同 external_userid 的消息关联到同一 Visitor | `cd backend && pytest tests/unit/test_services/test_visitor_service.py::test_get_or_create -v` | ✅ |
+| 1.4.6 | 图片消息能被识别并生成 AI 回复 | `cd backend && pytest tests/integration/test_wecom/test_callback.py::test_image_message -v` | ✅ |
+| 1.4.7 | 相同 MsgId 不重复处理（去重） | `cd backend && pytest tests/unit/test_services/test_wecom_service.py::test_dedup -v` | ✅ |
 
 > **状态说明：** ⬜ 未开始 · 🔄 进行中 · 🚫 阻塞（见遗留问题） · ✅ 已完成
 
@@ -137,7 +137,7 @@
 | 1.5.4 | 知识库管理页面可上传/删除文档 | 浏览器上传一个 .txt 文件，列表中出现该文档 | ✅ 已验收 |
 | 1.5.5 | Agent 配置页面保存提示词后生效 | 修改提示词保存，重新发消息，AI 回复风格改变 | ✅ 已验收 |
 | 1.5.6 | 系统设置页面保存 API Key，加密存储 | `cd backend && pytest tests/integration/test_api/test_admin.py::test_api_key_encrypted -v` | ✅ |
-| 1.5.7 | Nginx + Docker 部署，VPS 上可访问 | `curl -sf https://<域名>/health \| grep ok` | 🔄 |
+| 1.5.7 | Nginx + Docker 部署，VPS 上可访问 | `curl -sf https://<域名>/health \| grep ok` | ✅ |
 
 > **状态说明：** ⬜ 未开始 · 🔄 进行中 · 🚫 阻塞（见遗留问题） · ✅ 已完成
 
@@ -248,28 +248,29 @@
 
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
-**最后更新：** 2026-07-29  
-**当前 Sprint：** Sprint 1.5（进行中，已完成1.5.1/1.5.2/1.5.3/1.5.4/1.5.5/1.5.6；1.5.7 代码就绪）  
-**测试状态：** 33 passed，make check 全绿，前端 npm run build ✅  
-**本地验收：** Agent管理页、对话记录列表（5条）、SSE 流式对话 — 全部通过
+**最后更新：** 2026-07-30  
+**当前 Phase：** Phase 2 — 人工协作（未开始）  
+**Phase 1 状态：** ✅ 全部完成，端到端验收通过  
+**生产地址：** https://aigclin.com
 
 ### 本次完成
 
-- 任务1.5.2-1.5.5 本地验收通过（浏览器人工验证）
-- `docs/vps-deployment-checklist.md` — 完整的1.5.7 VPS部署前置检查清单（10步）
+- Phase 1 MVP 全部完成：
+  - 1.5.7 ✅：VPS 部署成功，http/https://aigclin.com/health 均返回 ok
+  - 1.4.1-1.4.7 ✅：企业微信接入完成，回调验证通过，发消息能收到 AI 回复
+  - Phase 1 完成标志全部达成（3秒内 AI 回复 / 知识库问答 / 管理后台 / make check）
 
 ### 遗留问题
 
-- **企业微信 1.4.1-1.4.4 阻塞**：需要公网域名完成回调验证。VPS 部署后解除
-- **1.5.7 部署待执行**：代码就绪，用户需在 VPS 按 `docs/vps-deployment-checklist.md` 执行
-- **Embedding API 未配置**：EMBEDDING_API_KEY 为空，向量搜索降级到 ILIKE
-- **Docker Hub 需代理**：`make dev` 需 `export http_proxy=http://127.0.0.1:7897`
-- **passlib 废弃**：auth_service.py 已改用 bcrypt 直接调用，passlib 依赖可后续清理
+- **Embedding API 未配置**：EMBEDDING_API_KEY 为空，RAG 向量搜索降级到 ILIKE；配置后可升级为语义搜索
+- **passlib 依赖**：auth_service.py 已改用 bcrypt 直接调用，passlib 可在 Phase 2 期间清理
 
 ### 下一步行动
 
-1. **（需用户操作）** 按 `docs/vps-deployment-checklist.md` 在 VPS 执行部署，验证 `curl https://<域名>/health` 返回 ok → 1.5.7 ✅
-2. 1.5.7 完成后 → Sprint 1.5 关闭 → 开始 Sprint 1.4 企业微信（补任务1.4.1：注册应用获取 CorpID/AgentID/Secret）
+1. **Sprint 2.1 — 转人工机制：** handoff 工具（AI 主动触发）、会话 `status=transferred` 标记、客服分配逻辑
+2. **Sprint 2.2 — 客服工作台：** WebSocket 实时推送、客服接管界面、发送消息到企业微信
+3. **Sprint 2.3 — 工具调用：** 订单查询 / 支付查询 / 物流查询 API 集成
+4. **Sprint 2.4 — 访客管理：** 标签系统、备注、搜索筛选
 
 ---
 
