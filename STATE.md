@@ -249,28 +249,29 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-30  
-**当前 Phase：** Phase 2 — 人工协作（未开始）  
-**Phase 1 状态：** ✅ 全部完成，端到端验收通过  
+**当前 Phase：** Phase 2 — 人工协作（Sprint 2.1 完成，待端到端验收）  
 **生产地址：** https://aigclin.com
 
 ### 本次完成
 
-- Phase 1 MVP 全部完成：
-  - 1.5.7 ✅：VPS 部署成功，http/https://aigclin.com/health 均返回 ok
-  - 1.4.1-1.4.7 ✅：企业微信接入完成，回调验证通过，发消息能收到 AI 回复
-  - Phase 1 完成标志全部达成（3秒内 AI 回复 / 知识库问答 / 管理后台 / make check）
+Sprint 2.1 转人工机制全部实现：
+- Staff 管理：schemas/staff.py + services/staff_service.py + api/v1/staff.py（GET/POST/PATCH）
+- Conversations API 扩展：GET ?status= 过滤、POST /{id}/transfer、POST /{id}/assign、PATCH /{id}/close
+- conversation_service.close_conversation() 新增
+- 前端 Conversations.tsx：状态过滤按钮（全部/进行中/已转人工/已关闭）+ transfer_reason 列 + 关闭操作
+- 单元测试：tests/unit/test_services/test_conversation_service.py（6 个测试）
 
 ### 遗留问题
 
-- **Embedding API 未配置**：EMBEDDING_API_KEY 为空，RAG 向量搜索降级到 ILIKE；配置后可升级为语义搜索
-- **passlib 依赖**：auth_service.py 已改用 bcrypt 直接调用，passlib 可在 Phase 2 期间清理
+- **Sprint 2.1 端到端验收待执行**：需在本地或 VPS 验证 AI 触发 handoff → 管理后台可见 transferred 状态
+- **Embedding API 未配置**：EMBEDDING_API_KEY 为空，RAG 降级到 ILIKE
+- **passlib 依赖**：可清理
 
 ### 下一步行动
 
-1. **Sprint 2.1 — 转人工机制：** handoff 工具（AI 主动触发）、会话 `status=transferred` 标记、客服分配逻辑
+1. **（可选验收）** `make dev`，发一条"我要退款，帮我转人工"，确认管理后台会话状态变 transferred
 2. **Sprint 2.2 — 客服工作台：** WebSocket 实时推送、客服接管界面、发送消息到企业微信
-3. **Sprint 2.3 — 工具调用：** 订单查询 / 支付查询 / 物流查询 API 集成
-4. **Sprint 2.4 — 访客管理：** 标签系统、备注、搜索筛选
+3. Sprint 2.3 工具调用 / Sprint 2.4 访客管理（按需排期）
 
 ---
 
