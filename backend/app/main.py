@@ -13,6 +13,7 @@ from app.api.v1.chat import router as chat_router
 from app.api.v1.conversations import router as conversations_router
 from app.api.v1.knowledge import router as knowledge_router
 from app.api.v1.staff import router as staff_router
+from app.api.v1.ws import router as ws_router
 from app.config import settings
 from app.core.exceptions import AppException
 from app.core.logging import configure_logging, logger

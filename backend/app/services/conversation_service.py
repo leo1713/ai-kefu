@@ -156,8 +156,38 @@ async def close_conversation(
     return conv
 
 
+async def reply_message(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    content: str,
+) -> tuple[Message, str]:
+    """保存客服回复，返回 (message, visitor_external_userid)。"""
+    from app.core.exceptions import NotFoundError
+    row = (await db.execute(
+        select(Conversation, Visitor.external_userid)
+        .join(Visitor, Conversation.visitor_id == Visitor.id)
+        .where(Conversation.id == conversation_id, Conversation.deleted_at.is_(None))
+    )).one_or_none()
+    if not row:
+        raise NotFoundError(f"Conversation {conversation_id} not found")
+    _, external_userid = row
+    msg = Message(
+        conversation_id=conversation_id,
+        role="staff",
+        content=content,
+        msg_type="text",
+    )
+    db.add(msg)
+    await db.commit()
+    await db.refresh(msg)
+    return msg, str(external_userid)
+
+
 async def list_all(
-    db: AsyncSession, limit: int = 50, status: str | None = None
+    db: AsyncSession,
+    limit: int = 50,
+    status: str | None = None,
+    assigned_staff_id: uuid.UUID | None = None,
 ) -> list[dict[str, object]]:
     stmt = (
         select(Conversation, Visitor.external_userid)

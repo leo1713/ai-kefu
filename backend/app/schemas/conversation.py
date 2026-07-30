@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ConversationResponse(BaseModel):
@@ -17,12 +17,12 @@ class ConversationResponse(BaseModel):
 
 
 class TransferRequest(BaseModel):
-    """手动触发转人工请求体。"""
     reason: str = "管理员手动转人工"
 
 
 class AssignStaffRequest(BaseModel):
-    """手动分配客服请求体。"""
     staff_id: uuid.UUID
 
 
+class ReplyRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
