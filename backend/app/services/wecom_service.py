@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import xml.etree.ElementTree as ET
 from typing import Any
 
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.integrations.wecom.client import WeComClient
 from app.integrations.wecom.crypto import WeComCrypto
+from app.services import conversation_service, visitor_service
 from app.services.chat_service import chat_stream
 
 logger = structlog.get_logger()
@@ -34,6 +36,39 @@ def parse_xml(xml_str: str) -> dict[str, Any]:
     return {child.tag: (child.text or "") for child in root}
 
 
+async def notify_staff_handoff(
+    client: WeComClient,
+    staff_wecom_userid: str,
+    visitor_external_userid: str,
+    reason: str,
+    summary: str = "",
+) -> None:
+    """通知客服有新的转人工会话。"""
+    content = (
+        f"【新转人工消息】\n"
+        f"访客：{visitor_external_userid}\n"
+        f"原因：{reason}\n"
+    )
+    if summary:
+        content += f"对话摘要：{summary}\n"
+    content += "\n请登录客服工作台接待该访客。"
+
+    try:
+        await client.send_text(
+            to_user=staff_wecom_userid,
+            agent_id=settings.wecom_agent_id,
+            content=content,
+        )
+        logger.info(
+            "wecom_staff_notified",
+            staff_wecom_userid=staff_wecom_userid,
+            visitor=visitor_external_userid,
+        )
+    except Exception as e:
+        # 通知失败不影响主流程
+        logger.warning("wecom_staff_notify_failed", error=str(e))
+
+
 async def handle_message(db: AsyncSession, xml_body: str) -> None:
     data = parse_xml(xml_body)
     msg_type = data.get("MsgType", "")
@@ -51,20 +86,126 @@ async def handle_message(db: AsyncSession, xml_body: str) -> None:
     if not content:
         return
 
-    # Collect full AI response (non-streaming for WeCom)
+    # 检查访客当前会话是否已转人工
+    visitor = await visitor_service.get_or_create(db, from_user)
+    from sqlalchemy import select
+    from app.models.conversation import Conversation
+    result = await db.execute(
+        select(Conversation)
+        .where(
+            Conversation.visitor_id == visitor.id,
+            Conversation.deleted_at.is_(None),
+        )
+        .order_by(Conversation.updated_at.desc())
+        .limit(1)
+    )
+    current_conv = result.scalar_one_or_none()
+
+    if current_conv and current_conv.status == "transferred":
+        # 会话已转人工：消息写入数据库，不 AI 回复，通知客服
+        from app.models.message import Message
+        visitor_msg = Message(
+            conversation_id=current_conv.id,
+            role="user",
+            content=content,
+            msg_type="text",
+        )
+        db.add(visitor_msg)
+        await db.commit()
+
+        logger.info(
+            "wecom_message_queued_for_staff",
+            from_user=from_user,
+            conversation_id=str(current_conv.id),
+        )
+
+        # 如果有分配的客服且有企业微信ID，推送通知
+        if current_conv.assigned_staff_id:
+            from sqlalchemy import select as sa_select
+            from app.models.staff import Staff
+            staff_result = await db.execute(
+                sa_select(Staff).where(Staff.id == current_conv.assigned_staff_id)
+            )
+            staff = staff_result.scalar_one_or_none()
+            if staff and staff.wecom_userid:
+                client = get_client()
+                await notify_staff_handoff(
+                    client=client,
+                    staff_wecom_userid=staff.wecom_userid,
+                    visitor_external_userid=from_user,
+                    reason="访客在转人工会话中发送了新消息",
+                )
+        return
+
+    # 正常 AI 回复流程，收集完整响应
     full_reply = ""
+    handoff_triggered = False
+    handoff_reason = ""
+    handoff_summary = ""
+
     async for sse_str in chat_stream(db, from_user, content):
         if '"event": "chat.content_chunk"' in sse_str:
-            import json
             try:
-                data_obj = json.loads(sse_str.replace("data: ", "").strip())
+                raw = sse_str.replace("data: ", "").strip()
+                data_obj = json.loads(raw)
                 full_reply += data_obj.get("text", "")
             except Exception:
                 pass
+        elif '"event": "chat.handoff"' in sse_str:
+            handoff_triggered = True
+            try:
+                raw = sse_str.replace("data: ", "").strip()
+                data_obj = json.loads(raw)
+                handoff_reason = data_obj.get("reason", "")
+            except Exception:
+                pass
+        elif '"event": "chat.tool_call"' in sse_str:
+            try:
+                raw = sse_str.replace("data: ", "").strip()
+                data_obj = json.loads(raw)
+                handoff_summary = data_obj.get("summary", "")
+            except Exception:
+                pass
 
-    if full_reply:
-        client = get_client()
-        await client.send_text(
+    wecom_client = get_client()
+
+    if handoff_triggered:
+        # 转人工：发送转接提示给访客
+        transfer_notice = full_reply or "您的问题已转接给人工客服，请稍候，客服人员将很快为您服务。"
+        await wecom_client.send_text(
+            to_user=from_user,
+            agent_id=settings.wecom_agent_id,
+            content=transfer_notice,
+        )
+
+        # 重新查询以获取最新的分配状态
+        result2 = await db.execute(
+            select(Conversation)
+            .where(
+                Conversation.visitor_id == visitor.id,
+                Conversation.deleted_at.is_(None),
+            )
+            .order_by(Conversation.updated_at.desc())
+            .limit(1)
+        )
+        updated_conv = result2.scalar_one_or_none()
+        if updated_conv and updated_conv.assigned_staff_id:
+            from sqlalchemy import select as sa_select2
+            from app.models.staff import Staff
+            staff_result2 = await db.execute(
+                sa_select2(Staff).where(Staff.id == updated_conv.assigned_staff_id)
+            )
+            staff2 = staff_result2.scalar_one_or_none()
+            if staff2 and staff2.wecom_userid:
+                await notify_staff_handoff(
+                    client=wecom_client,
+                    staff_wecom_userid=staff2.wecom_userid,
+                    visitor_external_userid=from_user,
+                    reason=handoff_reason,
+                    summary=handoff_summary,
+                )
+    elif full_reply:
+        await wecom_client.send_text(
             to_user=from_user,
             agent_id=settings.wecom_agent_id,
             content=full_reply,
