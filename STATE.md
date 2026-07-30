@@ -249,8 +249,32 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-30  
-**当前 Phase：** Phase 2 — 人工协作（Sprint 2.1 代码完成，待 make check 验证）  
+**当前 Phase：** Phase 2 — 人工协作（Sprint 2.1 代码完成，等待验收）  
 **生产地址：** https://aigclin.com
+
+### 本次完成
+
+Sprint 2.1 转人工机制全部落地（代码 + 测试）：
+- **AI 工具层**：`transfer_to_human` 工具定义，`chat_service` 检测触发 → 发 `chat.handoff` SSE 事件
+- **会话状态机**：`active → transferred → closed`，`close_conversation()` 新增
+- **自动分配**：`_auto_assign_staff()` 轮询负载最低客服
+- **Staff 管理 API**：`GET/POST/PATCH /api/v1/staff`，`staff_service.py`
+- **Conversations API 扩展**：`?status=` 过滤、`/transfer`、`/assign`、`/close` 端点
+- **数据库迁移**：`alembic c1a2b3d4` — handoff 相关字段
+- **前端 Conversations.tsx**：状态过滤按钮（全部/进行中/已转人工/已关闭）+ 转人工原因列 + 关闭操作
+- **前端 Staff.tsx**：客服列表 + 添加 / 启用 / 停用
+- **单元测试**：`test_conversation_service.py`（6 个）+ `test_chat_service.py` 补充 handoff 场景
+
+### 遗留问题
+
+- **Sprint 2.1 端到端验收**：本地 `make dev` 后，发"我要退款，帮我转人工"，确认管理后台会话变 `transferred`
+- **Embedding API 未配置**：EMBEDDING_API_KEY 为空，RAG 降级 ILIKE
+- **passlib 依赖**：可在 Sprint 2.2 期间清理
+
+### 下一步行动
+
+1. **（可选）本地验收 Sprint 2.1**：AI 触发 handoff → 管理后台可见 transferred 状态 + 关闭操作可用
+2. **Sprint 2.2 — 客服工作台**：WebSocket 实时推送、客服接管界面、通过企业微信发回消息
 
 ### 本次完成
 
