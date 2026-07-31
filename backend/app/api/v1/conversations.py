@@ -1,11 +1,14 @@
 import uuid
 
+import structlog
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.schemas.conversation import AssignStaffRequest, ConversationResponse, TransferRequest
+from app.schemas.conversation import AssignStaffRequest, ConversationResponse, ReplyRequest, TransferRequest
 from app.services import conversation_service
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -70,3 +73,32 @@ async def close_conversation(
 ) -> ConversationResponse:
     conv = await conversation_service.close_conversation(db, conversation_id)
     return ConversationResponse.model_validate(conv)
+
+
+@router.post("/{conversation_id}/reply")
+async def reply_to_conversation(
+    conversation_id: uuid.UUID,
+    body: ReplyRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    msg, visitor_external_userid = await conversation_service.reply_message(
+        db, conversation_id=conversation_id, content=body.content
+    )
+    try:
+        from app.config import settings as cfg
+        from app.services.wecom_service import get_client
+        client = get_client()
+        await client.send_text(
+            to_user=visitor_external_userid,
+            agent_id=cfg.wecom_agent_id,
+            content=body.content,
+        )
+    except Exception as e:
+        logger.warning("wecom_reply_failed", conversation_id=str(conversation_id), error=str(e))
+    return {
+        "id": str(msg.id),
+        "role": msg.role,
+        "content": msg.content,
+        "msg_type": msg.msg_type,
+        "created_at": msg.created_at.isoformat(),
+    }

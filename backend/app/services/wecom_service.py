@@ -12,6 +12,7 @@ from app.integrations.wecom.client import WeComClient
 from app.integrations.wecom.crypto import WeComCrypto
 from app.services import conversation_service, visitor_service
 from app.services.chat_service import chat_stream
+from app.websocket.manager import manager
 
 logger = structlog.get_logger()
 
@@ -112,12 +113,29 @@ async def handle_message(db: AsyncSession, xml_body: str) -> None:
         )
         db.add(visitor_msg)
         await db.commit()
+        await db.refresh(visitor_msg)
 
         logger.info(
             "wecom_message_queued_for_staff",
             from_user=from_user,
             conversation_id=str(current_conv.id),
         )
+
+        if current_conv.assigned_staff_id:
+            await manager.send_to_staff(
+                str(current_conv.assigned_staff_id),
+                {
+                    "event": "new_message",
+                    "conversation_id": str(current_conv.id),
+                    "message": {
+                        "id": str(visitor_msg.id),
+                        "role": visitor_msg.role,
+                        "content": visitor_msg.content,
+                        "msg_type": visitor_msg.msg_type,
+                        "created_at": visitor_msg.created_at.isoformat(),
+                    },
+                },
+            )
 
         # 如果有分配的客服且有企业微信ID，推送通知
         if current_conv.assigned_staff_id:
@@ -204,6 +222,22 @@ async def handle_message(db: AsyncSession, xml_body: str) -> None:
                     reason=handoff_reason,
                     summary=handoff_summary,
                 )
+            await manager.send_to_staff(
+                str(updated_conv.assigned_staff_id),
+                {
+                    "event": "conversation_transferred",
+                    "conversation": {
+                        "id": str(updated_conv.id),
+                        "visitor_id": str(updated_conv.visitor_id),
+                        "visitor_external_userid": from_user,
+                        "status": updated_conv.status,
+                        "transfer_reason": updated_conv.transfer_reason,
+                        "assigned_staff_id": str(updated_conv.assigned_staff_id),
+                        "created_at": updated_conv.created_at.isoformat(),
+                        "updated_at": updated_conv.updated_at.isoformat(),
+                    },
+                },
+            )
     elif full_reply:
         await wecom_client.send_text(
             to_user=from_user,

@@ -99,3 +99,13 @@ export async function updateStaffStatus(staffId: string, isActive: boolean): Pro
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
+
+export async function replyMessage(conversationId: string, content: string): Promise<Message> {
+  const r = await fetch(`/api/v1/conversations/${conversationId}/reply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+  return r.json()
+}

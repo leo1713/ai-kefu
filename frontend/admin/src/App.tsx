@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Knowledge from './pages/Knowledge'
 import Staff from './pages/Staff'
 import Visitors from './pages/Visitors'
+import Workbench from './pages/Workbench'
 import Workflows from './pages/Workflows'
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
               { to: '/knowledge', label: '知识库' },
               { to: '/visitors', label: '访客管理' },
               { to: '/staff', label: '客服管理' },
+              { to: '/workbench', label: '客服工作台' },
               { to: '/workflows', label: '工作流' },
               { to: '/chat-test', label: '聊天测试' },
             ].map(({ to, label }) => (
@@ -46,6 +48,7 @@ export default function App() {
             <Route path="/knowledge" element={<Knowledge />} />
             <Route path="/visitors" element={<Visitors />} />
             <Route path="/staff" element={<Staff />} />
+            <Route path="/workbench" element={<Workbench />} />
             <Route path="/workflows" element={<Workflows />} />
             <Route path="/chat-test" element={<ChatTest />} />
           </Routes>
