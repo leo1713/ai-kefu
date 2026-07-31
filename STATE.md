@@ -156,7 +156,7 @@
 |--------|------|----------|
 | 2.1 | 转人工机制 | handoff 工具、AI 禁用标记、客服分配 | ✅ 已完成 |
 | 2.2 | 客服工作台 | WebSocket 实时通信、会话列表、回复功能 | ✅ 已完成 |
-| 2.3 | 工具调用 | 订单查询、支付查询、物流查询集成 |
+| 2.3 | 工具调用 | 订单查询、支付查询、物流查询集成 | ✅ 已完成 |
 | 2.4 | 访客管理 | 标签系统、信息完善、搜索筛选 |
 
 ---
@@ -249,31 +249,31 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-31  
-**当前 Phase：** Phase 2 — 人工协作（Sprint 2.2 代码完成，等待端到端验收）  
+**当前 Phase：** Phase 2 — 人工协作（Sprint 2.3 代码完成，等待端到端验收）  
 **生产地址：** https://aigclin.com
 
 ### 本次完成
 
-Sprint 2.2 客服工作台全部落地：
+Sprint 2.3 工具调用全部落地：
 
-- **`main.py`**：注册之前只 import 未挂载的 `ws_router`（`/ws/staff` 端点开始生效）
-- **`wecom_service.py`**：transferred 会话收到新消息后 `db.refresh` + `manager.send_to_staff` 推 `new_message` 事件；handoff 转人工后推 `conversation_transferred` 事件
-- **`api/v1/conversations.py`**：新增 `POST /{id}/reply` 端点，保存客服消息并异步发 WeCom，失败仅 warn 不阻断
-- **`api/conversations.ts`**：新增 `replyMessage` 前端 API 函数
-- **`pages/Workbench.tsx`**：全新客服工作台页面，含登录表单 + 左侧会话列表（WS 实时推入） + 右侧消息时间线（自动滚底） + 底部发消息输入框；左上角圆点显示 WS 连接状态
-- **`App.tsx`**：导航新增「客服工作台」入口，注册 `/workbench` 路由
-- **`vite.config.ts`**：新增 `/ws` 代理（`ws: true`），本地开发 WebSocket 穿透到后端
+- **`app/ai/tools/query.py`**：定义 `query_order` / `query_payment` / `query_logistics` 三个工具，含 Claude 可读的描述和 JSON Schema input
+- **`app/services/tools_service.py`**：工具执行层，优先调用外部 HTTP API（`ORDER/PAYMENT/LOGISTICS_API_URL`），未配置时降级返回 mock 数据
+- **`app/ai/tools/__init__.py`**：导出 `ALL_TOOLS` 列表和 `QUERY_TOOL_NAMES` frozenset
+- **`app/ai/claude_client.py`**：`ToolCallResult` 新增 `tool_use_id`（multi-turn 必需）
+- **`app/services/chat_service.py`**：单次调用重构为 agentic loop（最多5轮）：遇到查询工具→执行→把结果作为 `tool_result` 再送 Claude→得到最终回复；handoff 逻辑不变
+- **`app/config.py`**：新增3个可选环境变量
 
 ### 遗留问题
 
-- **Sprint 2.2 端到端验收待执行**：`make dev` → 访问 `/workbench` 登录 → 企业微信触发转人工 → 工作台实时收到会话 → 客服回复 → 企业微信收到回复
-- **Sprint 2.1 端到端验收**：`make dev`，发"我要退款，帮我转人工"，确认管理后台会话变 `transferred`
+- **Sprint 2.3 工具 API 未配置**：`ORDER_API_URL` / `PAYMENT_API_URL` / `LOGISTICS_API_URL` 为空，当前返回 mock 数据；接入真实系统只需在 `.env` 补充这三个变量
+- **Sprint 2.2 端到端验收待执行**：`make dev` → `/workbench` 登录 → 企业微信触发转人工 → 工作台实时收到 → 客服回复企业微信收到
+- **Sprint 2.1 端到端验收**：发"我要退款，帮我转人工"，确认管理后台会话变 `transferred`
 - **Embedding API 未配置**：EMBEDDING_API_KEY 为空，RAG 降级 ILIKE
 - **passlib 依赖**：可清理
 
 ### 下一步行动
 
-1. **Sprint 2.3 — 工具调用**：订单查询、支付查询、物流查询集成
+1. **Sprint 2.4 — 访客管理**：标签系统、备注、搜索筛选
 
 ---
 
