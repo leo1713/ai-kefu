@@ -5,6 +5,7 @@ import ConversationDetail from './pages/ConversationDetail'
 import Conversations from './pages/Conversations'
 import Dashboard from './pages/Dashboard'
 import Knowledge from './pages/Knowledge'
+import QA from './pages/QA'
 import Staff from './pages/Staff'
 import Visitors from './pages/Visitors'
 import Workbench from './pages/Workbench'
@@ -22,6 +23,7 @@ export default function App() {
               { to: '/conversations', label: '对话记录' },
               { to: '/agents', label: 'Agent 管理' },
               { to: '/knowledge', label: '知识库' },
+              { to: '/qa', label: 'QA 知识库' },
               { to: '/visitors', label: '访客管理' },
               { to: '/staff', label: '客服管理' },
               { to: '/workbench', label: '客服工作台' },
@@ -46,6 +48,7 @@ export default function App() {
             <Route path="/conversations/:id" element={<ConversationDetail />} />
             <Route path="/agents" element={<Agents />} />
             <Route path="/knowledge" element={<Knowledge />} />
+            <Route path="/qa" element={<QA />} />
             <Route path="/visitors" element={<Visitors />} />
             <Route path="/staff" element={<Staff />} />
             <Route path="/workbench" element={<Workbench />} />

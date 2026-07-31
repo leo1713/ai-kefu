@@ -5,7 +5,7 @@
 - **当前 Phase：** Phase 3 — 智能增强（进行中）
 - **Phase 1 状态：** ✅ 已完成（2026-07-30）
 - **Phase 2 状态：** ✅ 已完成（2026-07-31）
-- **整体进度：** 75%（Sprint 3.1 完成）
+- **整体进度：** 83%（Sprint 3.2 完成）
 
 ---
 
@@ -169,7 +169,7 @@
 | Sprint | 目标 | 核心任务 |
 |--------|------|----------|
 | 3.1 | 多 Agent | 分诊 Agent、专业 Agent、路由逻辑 | ✅ 已完成 |
-| 3.2 | QA 知识库 | 精确匹配、批量导入 |
+| 3.2 | QA 知识库 | 精确匹配、批量导入 | ✅ 已完成 |
 | 3.3 | 工作流引擎 | DAG 执行器、节点类型、可视化编辑 |
 | 3.4 | 数据看板 | 统计接口、图表组件 |
 
@@ -250,17 +250,19 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-31  
-**当前 Phase：** Phase 3 — 智能增强（Sprint 3.1 完成，进行中）  
+**当前 Phase：** Phase 3 — 智能增强（Sprint 3.2 完成，进行中）  
 **生产地址：** https://aigclin.com
 
 ### 本次完成
 
-Sprint 3.1 多 Agent 路由全部落地：
+Sprint 3.2 QA 知识库全部落地（commit a73240f，768行，10个文件）：
 
-- **`app/ai/tools/routing.py`**：`route_to_agent` 工具定义，enum `["refund", "logistics"]`，主 Agent 识别到专业问题后调用
-- **`app/ai/specialists.py`**：两个专家配置（frozen dataclass）— 退款专员（优先调 `query_order`/`query_payment`）和物流专员（优先调 `query_order`/`query_logistics`）
-- **`app/ai/tools/__init__.py`**：拆分 `SPECIALIST_TOOLS`（无路由，防递归）和 `ALL_TOOLS`（含路由），导出 `ROUTE_TO_AGENT_TOOL_NAME`
-- **`app/services/chat_service.py`**：主循环遇 `route_to_agent` → break；随后专业 Agent 子循环（最多3轮）以共享 context + 专属系统提示运行，可调 query 工具；`last_tool_call` 传递供 handoff 检测复用
+- **`app/models/qa_pair.py`**：QAPair 模型（question/answer/keywords/priority/is_active）
+- **Alembic 迁移**：`qa_pairs` 表 + `ix_qa_pairs_is_active` 索引
+- **`app/services/qa_service.py`**：精确匹配（关键词 + ILIKE）优先于向量搜索；批量导入（JSON/CSV）
+- **`app/api/v1/qa.py`**：QA CRUD + 批量导入接口
+- **`frontend/admin/src/pages/QA.tsx`**：QA 管理页面（列表/新增/编辑/删除/批量导入）
+- **`App.tsx`**：侧边栏 "QA 知识库" 导航 + `/qa` 路由
 
 ### 遗留问题
 
@@ -271,7 +273,7 @@ Sprint 3.1 多 Agent 路由全部落地：
 
 ### 下一步行动
 
-1. **Sprint 3.2 — QA 知识库**：精确匹配、批量导入
+1. **Sprint 3.3 — 工作流引擎**：DAG 执行器、节点类型、可视化编辑
 
 ---
 
