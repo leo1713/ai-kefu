@@ -2,10 +2,10 @@
 
 ## 项目状态
 
-- **当前 Phase：** Phase 3 — 智能增强（未开始）
+- **当前 Phase：** Phase 3 — 智能增强（进行中）
 - **Phase 1 状态：** ✅ 已完成（2026-07-30）
 - **Phase 2 状态：** ✅ 已完成（2026-07-31）
-- **整体进度：** 66%（Phase 2/3 完成）
+- **整体进度：** 75%（Sprint 3.1 完成）
 
 ---
 
@@ -15,7 +15,7 @@
 |-------|------|------|----------|------|
 | 1 | MVP | 企业微信 + AI 知识库问答，能真实使用 | 4-6 周 | ✅ 已完成 |
 | 2 | 人工协作 | 转人工 + 客服工作台 + 工具调用 | 3-4 周 | ✅ 已完成 |
-| 3 | 智能增强 | 多 Agent + 工作流 + 数据看板 | 3-4 周 | ⬜ 等待 |
+| 3 | 智能增强 | 多 Agent + 工作流 + 数据看板 | 3-4 周 | 🔴 进行中 |
 
 ---
 
@@ -168,7 +168,7 @@
 
 | Sprint | 目标 | 核心任务 |
 |--------|------|----------|
-| 3.1 | 多 Agent | 分诊 Agent、专业 Agent、路由逻辑 |
+| 3.1 | 多 Agent | 分诊 Agent、专业 Agent、路由逻辑 | ✅ 已完成 |
 | 3.2 | QA 知识库 | 精确匹配、批量导入 |
 | 3.3 | 工作流引擎 | DAG 执行器、节点类型、可视化编辑 |
 | 3.4 | 数据看板 | 统计接口、图表组件 |
@@ -250,32 +250,28 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-31  
-**当前 Phase：** Phase 3 — 智能增强（未开始）  
+**当前 Phase：** Phase 3 — 智能增强（Sprint 3.1 完成，进行中）  
 **生产地址：** https://aigclin.com
 
 ### 本次完成
 
-Sprint 2.4 访客管理全部落地，Phase 2 完结：
+Sprint 3.1 多 Agent 路由全部落地：
 
-- **`models/visitor.py`**：新增 `tags`（JSON）和 `notes`（Text）字段
-- **`alembic/versions/d4e5f6a7b8c9`**：迁移脚本，给 visitors 表加 tags/notes 列
-- **`schemas/visitor.py`**：新增 `VisitorResponse` / `VisitorUpdateRequest`
-- **`services/visitor_service.py`**：新增 `list_all`（支持 search + tag 过滤）、`update_visitor`
-- **`api/v1/visitors.py`**：`GET /visitors`（search/tag/limit 参数）、`PATCH /visitors/{id}`
-- **`api/visitors.ts`**：`getVisitors` / `updateVisitor` 前端 API 函数
-- **`pages/Visitors.tsx`**：搜索框 + 标签下拉过滤 + 表格（ID/姓名/标签/备注/AI状态/首次接触）+ 编辑弹窗（姓名/标签增删/备注/AI自动回复开关）
+- **`app/ai/tools/routing.py`**：`route_to_agent` 工具定义，enum `["refund", "logistics"]`，主 Agent 识别到专业问题后调用
+- **`app/ai/specialists.py`**：两个专家配置（frozen dataclass）— 退款专员（优先调 `query_order`/`query_payment`）和物流专员（优先调 `query_order`/`query_logistics`）
+- **`app/ai/tools/__init__.py`**：拆分 `SPECIALIST_TOOLS`（无路由，防递归）和 `ALL_TOOLS`（含路由），导出 `ROUTE_TO_AGENT_TOOL_NAME`
+- **`app/services/chat_service.py`**：主循环遇 `route_to_agent` → break；随后专业 Agent 子循环（最多3轮）以共享 context + 专属系统提示运行，可调 query 工具；`last_tool_call` 传递供 handoff 检测复用
 
 ### 遗留问题
 
-- **各 Sprint 端到端验收待执行**：需在本地 `make dev` 完整跑通企业微信收发、工作台实时推送、工具查询
-- **Sprint 2.4 迁移需运行**：部署前需执行 `make migrate`
+- **端到端验收待执行**：发"我的快递没动静，订单12345" → 确认路由到物流专员 → 调 `query_logistics` → 返回具体信息
 - **工具 API 未配置**：`ORDER/PAYMENT/LOGISTICS_API_URL` 为空，当前用 mock 数据
 - **Embedding API 未配置**：EMBEDDING_API_KEY 为空，RAG 降级 ILIKE
 - **passlib 依赖**：可清理
 
 ### 下一步行动
 
-1. **讨论 Phase 3 Sprint 3.1 多 Agent 方案**，再开始实现（分诊 Agent、专业 Agent、路由逻辑）
+1. **Sprint 3.2 — QA 知识库**：精确匹配、批量导入
 
 ---
 
