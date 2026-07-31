@@ -7,13 +7,18 @@ from app.ai.tools.query import (
     PAYMENT_QUERY_TOOL,
     PAYMENT_QUERY_TOOL_NAME,
 )
+from app.ai.tools.routing import ROUTE_TO_AGENT_TOOL, ROUTE_TO_AGENT_TOOL_NAME
 
-ALL_TOOLS: list[dict[str, object]] = [
+# 专业 Agent 可用的工具（不含路由，防止递归）
+SPECIALIST_TOOLS: list[dict[str, object]] = [
     HANDOFF_TOOL,
     ORDER_QUERY_TOOL,
     PAYMENT_QUERY_TOOL,
     LOGISTICS_QUERY_TOOL,
 ]
+
+# 主 Agent 可用的全部工具（含路由）
+ALL_TOOLS: list[dict[str, object]] = SPECIALIST_TOOLS + [ROUTE_TO_AGENT_TOOL]
 
 QUERY_TOOL_NAMES: frozenset[str] = frozenset(
     [ORDER_QUERY_TOOL_NAME, PAYMENT_QUERY_TOOL_NAME, LOGISTICS_QUERY_TOOL_NAME]
@@ -28,6 +33,9 @@ __all__ = [
     "PAYMENT_QUERY_TOOL_NAME",
     "LOGISTICS_QUERY_TOOL",
     "LOGISTICS_QUERY_TOOL_NAME",
+    "ROUTE_TO_AGENT_TOOL",
+    "ROUTE_TO_AGENT_TOOL_NAME",
     "ALL_TOOLS",
+    "SPECIALIST_TOOLS",
     "QUERY_TOOL_NAMES",
 ]

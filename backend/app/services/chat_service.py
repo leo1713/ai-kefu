@@ -9,8 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.claude_client import ClaudeClient
+from app.ai.specialists import SPECIALIST_AGENTS
 from app.ai.streaming import sse
-from app.ai.tools import ALL_TOOLS, HANDOFF_TOOL_NAME, QUERY_TOOL_NAMES
+from app.ai.tools import ALL_TOOLS, HANDOFF_TOOL_NAME, QUERY_TOOL_NAMES, ROUTE_TO_AGENT_TOOL_NAME, SPECIALIST_TOOLS
 from app.config import settings
 from app.core.exceptions import ExternalServiceError
 from app.models.conversation import Conversation
@@ -134,6 +135,9 @@ async def chat_stream(
         if last_tool_call.tool_name == HANDOFF_TOOL_NAME:
             break
 
+        if last_tool_call.tool_name == ROUTE_TO_AGENT_TOOL_NAME:
+            break
+
         if last_tool_call.tool_name in QUERY_TOOL_NAMES:
             yield sse("chat.tool_call", tool=last_tool_call.tool_name)
             tool_response = await tools_service.execute_tool(
@@ -166,6 +170,90 @@ async def chat_stream(
             continue
 
         break  # unknown tool
+
+    # --- 专业 Agent 子循环（仅在 route_to_agent 触发时运行）---
+    if last_tool_call and last_tool_call.tool_name == ROUTE_TO_AGENT_TOOL_NAME:
+        routing_slug = last_tool_call.tool_input.get("agent", "")
+        routing_reason = last_tool_call.tool_input.get("reason", "")
+        specialist = SPECIALIST_AGENTS.get(routing_slug)
+
+        yield sse("chat.tool_call", tool=ROUTE_TO_AGENT_TOOL_NAME, agent=routing_slug, reason=routing_reason)
+        logger.info("routing_to_specialist", agent=routing_slug, reason=routing_reason)
+
+        if specialist:
+            # 把路由工具调用追加到共享上下文
+            loop_messages.append({
+                "role": "assistant",
+                "content": [{
+                    "type": "tool_use",
+                    "id": last_tool_call.tool_use_id,
+                    "name": ROUTE_TO_AGENT_TOOL_NAME,
+                    "input": last_tool_call.tool_input,
+                }],
+            })
+            loop_messages.append({
+                "role": "user",
+                "content": [{
+                    "type": "tool_result",
+                    "tool_use_id": last_tool_call.tool_use_id,
+                    "content": f"已切换到{specialist.name}，请为用户提供专业服务。",
+                }],
+            })
+
+            for _spec_iter in range(3):
+                try:
+                    spec_gen, spec_result = await client.stream_with_tools(
+                        messages=loop_messages,
+                        tools=SPECIALIST_TOOLS,  # type: ignore[arg-type]
+                        system=specialist.system_prompt,
+                        model=agent.model,
+                        max_tokens=agent.max_tokens,
+                    )
+                    spec_iter_text = ""
+                    async for chunk in spec_gen:
+                        spec_iter_text += chunk
+                        yield sse("chat.content_chunk", text=chunk)
+                except ExternalServiceError as e:
+                    yield sse("chat.error", message=str(e))
+                    return
+
+                full_text += spec_iter_text
+                last_tool_call = spec_result.tool_call
+
+                if not last_tool_call:
+                    break
+
+                if last_tool_call.tool_name == HANDOFF_TOOL_NAME:
+                    break
+
+                if last_tool_call.tool_name in QUERY_TOOL_NAMES:
+                    yield sse("chat.tool_call", tool=last_tool_call.tool_name)
+                    spec_response = await tools_service.execute_tool(
+                        last_tool_call.tool_name, last_tool_call.tool_input
+                    )
+                    logger.info("specialist_tool_executed", tool=last_tool_call.tool_name, agent=routing_slug)
+
+                    spec_content: list[dict[str, object]] = []
+                    if spec_iter_text:
+                        spec_content.append({"type": "text", "text": spec_iter_text})
+                    spec_content.append({
+                        "type": "tool_use",
+                        "id": last_tool_call.tool_use_id,
+                        "name": last_tool_call.tool_name,
+                        "input": last_tool_call.tool_input,
+                    })
+                    loop_messages.append({"role": "assistant", "content": spec_content})
+                    loop_messages.append({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": last_tool_call.tool_use_id,
+                            "content": json.dumps(spec_response, ensure_ascii=False),
+                        }],
+                    })
+                    continue
+
+                break  # unknown tool in specialist
 
     # 保存 AI 全量回复
     if full_text:
