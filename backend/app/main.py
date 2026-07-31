@@ -14,6 +14,7 @@ from app.api.v1.conversations import router as conversations_router
 from app.api.v1.knowledge import router as knowledge_router
 from app.api.v1.qa import router as qa_router
 from app.api.v1.staff import router as staff_router
+from app.api.v1.stats import router as stats_router
 from app.api.v1.visitors import router as visitors_router
 from app.api.v1.workflows import router as workflows_router
 from app.api.v1.ws import router as ws_router
@@ -70,6 +71,7 @@ app.include_router(conversations_router, prefix="/api/v1")
 app.include_router(knowledge_router, prefix="/api/v1")
 app.include_router(qa_router, prefix="/api/v1")
 app.include_router(staff_router, prefix="/api/v1")
+app.include_router(stats_router, prefix="/api/v1")
 app.include_router(visitors_router, prefix="/api/v1")
 app.include_router(workflows_router, prefix="/api/v1")
 app.include_router(wecom_internal_router, prefix="/api/internal")
