@@ -5,7 +5,7 @@
 - **当前 Phase：** Phase 3 — 智能增强（进行中）
 - **Phase 1 状态：** ✅ 已完成（2026-07-30）
 - **Phase 2 状态：** ✅ 已完成（2026-07-31）
-- **整体进度：** 83%（Sprint 3.2 完成）
+- **整体进度：** 92%（Sprint 3.3 完成）
 
 ---
 
@@ -170,7 +170,7 @@
 |--------|------|----------|
 | 3.1 | 多 Agent | 分诊 Agent、专业 Agent、路由逻辑 | ✅ 已完成 |
 | 3.2 | QA 知识库 | 精确匹配、批量导入 | ✅ 已完成 |
-| 3.3 | 工作流引擎 | DAG 执行器、节点类型、可视化编辑 |
+| 3.3 | 工作流引擎 | DAG 执行器、节点类型、可视化编辑 | ✅ 已完成 |
 | 3.4 | 数据看板 | 统计接口、图表组件 |
 
 ---
@@ -250,19 +250,22 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-31  
-**当前 Phase：** Phase 3 — 智能增强（Sprint 3.2 完成，进行中）  
+**当前 Phase：** Phase 3 — 智能增强（Sprint 3.3 完成，进行中）  
 **生产地址：** https://aigclin.com
 
 ### 本次完成
 
-Sprint 3.2 QA 知识库全部落地（commit a73240f，768行，10个文件）：
+Sprint 3.3 工作流引擎全部落地（commit 0000672，863行，10个文件）：
 
-- **`app/models/qa_pair.py`**：QAPair 模型（question/answer/keywords/priority/is_active）
-- **Alembic 迁移**：`qa_pairs` 表 + `ix_qa_pairs_is_active` 索引
-- **`app/services/qa_service.py`**：精确匹配（关键词 + ILIKE）优先于向量搜索；批量导入（JSON/CSV）
-- **`app/api/v1/qa.py`**：QA CRUD + 批量导入接口
-- **`frontend/admin/src/pages/QA.tsx`**：QA 管理页面（列表/新增/编辑/删除/批量导入）
-- **`App.tsx`**：侧边栏 "QA 知识库" 导航 + `/qa` 路由
+- **`app/models/workflow.py`**：新增 `trigger_keywords` JSON 列
+- **Alembic 迁移**：`f7a8b9c0d1e2` — `ALTER TABLE workflows ADD trigger_keywords`
+- **`app/services/workflow_service.py`**：CRUD + `match_workflow` 关键词匹配（任意关键词命中即触发）
+- **`app/services/workflow_executor.py`**：DAG 执行器，4种节点（send_message/condition/tool_call/end），MAX_STEPS=20
+- **`app/api/v1/workflows.py`**：工作流 CRUD REST 接口
+- **`app/main.py`**：注册 workflows router
+- **`app/services/chat_service.py`**：触发优先级：工作流关键词 > QA 精确匹配 > RAG > Agent
+- **`frontend/admin/src/api/workflows.ts`**：API client
+- **`frontend/admin/src/pages/Workflows.tsx`**：节点列表表单编辑器（无 ReactFlow）
 
 ### 遗留问题
 
@@ -273,7 +276,8 @@ Sprint 3.2 QA 知识库全部落地（commit a73240f，768行，10个文件）�
 
 ### 下一步行动
 
-1. **Sprint 3.3 — 工作流引擎**：DAG 执行器、节点类型、可视化编辑
+1. **`make migrate`** — 执行 `f7a8b9c0d1e2` 迁移，添加 `trigger_keywords` 列
+2. **Sprint 3.4 — 数据看板**：统计接口 + 图表组件
 
 ---
 
