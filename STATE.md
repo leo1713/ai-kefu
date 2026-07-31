@@ -2,9 +2,10 @@
 
 ## 项目状态
 
-- **当前 Phase：** Phase 2 — 人工协作
+- **当前 Phase：** Phase 3 — 智能增强（未开始）
 - **Phase 1 状态：** ✅ 已完成（2026-07-30）
-- **整体进度：** 33%（Phase 1/3 完成）
+- **Phase 2 状态：** ✅ 已完成（2026-07-31）
+- **整体进度：** 66%（Phase 2/3 完成）
 
 ---
 
@@ -13,7 +14,7 @@
 | Phase | 名称 | 目标 | 预估周期 | 状态 |
 |-------|------|------|----------|------|
 | 1 | MVP | 企业微信 + AI 知识库问答，能真实使用 | 4-6 周 | ✅ 已完成 |
-| 2 | 人工协作 | 转人工 + 客服工作台 + 工具调用 | 3-4 周 | 🔴 进行中 |
+| 2 | 人工协作 | 转人工 + 客服工作台 + 工具调用 | 3-4 周 | ✅ 已完成 |
 | 3 | 智能增强 | 多 Agent + 工作流 + 数据看板 | 3-4 周 | ⬜ 等待 |
 
 ---
@@ -157,7 +158,7 @@
 | 2.1 | 转人工机制 | handoff 工具、AI 禁用标记、客服分配 | ✅ 已完成 |
 | 2.2 | 客服工作台 | WebSocket 实时通信、会话列表、回复功能 | ✅ 已完成 |
 | 2.3 | 工具调用 | 订单查询、支付查询、物流查询集成 | ✅ 已完成 |
-| 2.4 | 访客管理 | 标签系统、信息完善、搜索筛选 |
+| 2.4 | 访客管理 | 标签系统、信息完善、搜索筛选 | ✅ 已完成 |
 
 ---
 
@@ -249,31 +250,32 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-31  
-**当前 Phase：** Phase 2 — 人工协作（Sprint 2.3 代码完成，等待端到端验收）  
+**当前 Phase：** Phase 3 — 智能增强（未开始）  
 **生产地址：** https://aigclin.com
 
 ### 本次完成
 
-Sprint 2.3 工具调用全部落地：
+Sprint 2.4 访客管理全部落地，Phase 2 完结：
 
-- **`app/ai/tools/query.py`**：定义 `query_order` / `query_payment` / `query_logistics` 三个工具，含 Claude 可读的描述和 JSON Schema input
-- **`app/services/tools_service.py`**：工具执行层，优先调用外部 HTTP API（`ORDER/PAYMENT/LOGISTICS_API_URL`），未配置时降级返回 mock 数据
-- **`app/ai/tools/__init__.py`**：导出 `ALL_TOOLS` 列表和 `QUERY_TOOL_NAMES` frozenset
-- **`app/ai/claude_client.py`**：`ToolCallResult` 新增 `tool_use_id`（multi-turn 必需）
-- **`app/services/chat_service.py`**：单次调用重构为 agentic loop（最多5轮）：遇到查询工具→执行→把结果作为 `tool_result` 再送 Claude→得到最终回复；handoff 逻辑不变
-- **`app/config.py`**：新增3个可选环境变量
+- **`models/visitor.py`**：新增 `tags`（JSON）和 `notes`（Text）字段
+- **`alembic/versions/d4e5f6a7b8c9`**：迁移脚本，给 visitors 表加 tags/notes 列
+- **`schemas/visitor.py`**：新增 `VisitorResponse` / `VisitorUpdateRequest`
+- **`services/visitor_service.py`**：新增 `list_all`（支持 search + tag 过滤）、`update_visitor`
+- **`api/v1/visitors.py`**：`GET /visitors`（search/tag/limit 参数）、`PATCH /visitors/{id}`
+- **`api/visitors.ts`**：`getVisitors` / `updateVisitor` 前端 API 函数
+- **`pages/Visitors.tsx`**：搜索框 + 标签下拉过滤 + 表格（ID/姓名/标签/备注/AI状态/首次接触）+ 编辑弹窗（姓名/标签增删/备注/AI自动回复开关）
 
 ### 遗留问题
 
-- **Sprint 2.3 工具 API 未配置**：`ORDER_API_URL` / `PAYMENT_API_URL` / `LOGISTICS_API_URL` 为空，当前返回 mock 数据；接入真实系统只需在 `.env` 补充这三个变量
-- **Sprint 2.2 端到端验收待执行**：`make dev` → `/workbench` 登录 → 企业微信触发转人工 → 工作台实时收到 → 客服回复企业微信收到
-- **Sprint 2.1 端到端验收**：发"我要退款，帮我转人工"，确认管理后台会话变 `transferred`
+- **各 Sprint 端到端验收待执行**：需在本地 `make dev` 完整跑通企业微信收发、工作台实时推送、工具查询
+- **Sprint 2.4 迁移需运行**：部署前需执行 `make migrate`
+- **工具 API 未配置**：`ORDER/PAYMENT/LOGISTICS_API_URL` 为空，当前用 mock 数据
 - **Embedding API 未配置**：EMBEDDING_API_KEY 为空，RAG 降级 ILIKE
 - **passlib 依赖**：可清理
 
 ### 下一步行动
 
-1. **Sprint 2.4 — 访客管理**：标签系统、备注、搜索筛选
+1. **讨论 Phase 3 Sprint 3.1 多 Agent 方案**，再开始实现（分诊 Agent、专业 Agent、路由逻辑）
 
 ---
 
