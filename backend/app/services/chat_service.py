@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import AsyncGenerator
 
@@ -9,12 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.claude_client import ClaudeClient
 from app.ai.streaming import sse
-from app.ai.tools import HANDOFF_TOOL, HANDOFF_TOOL_NAME
+from app.ai.tools import ALL_TOOLS, HANDOFF_TOOL_NAME, QUERY_TOOL_NAMES
 from app.config import settings
 from app.core.exceptions import ExternalServiceError
 from app.models.conversation import Conversation
 from app.models.message import Message
-from app.services import conversation_service, rag_service, visitor_service
+from app.services import conversation_service, rag_service, tools_service, visitor_service
 from app.services.agent_service import seed_default_agent
 
 logger = structlog.get_logger()
@@ -102,23 +103,71 @@ async def chat_stream(
         base_url=settings.anthropic_base_url,
     )
 
+    # --- agentic tool loop (max 5 iterations) ---
+    loop_messages = list(messages)
     full_text = ""
-    try:
-        text_gen, tool_result = await client.stream_with_tools(
-            messages=messages,
-            tools=[HANDOFF_TOOL],  # type: ignore[list-item]
-            system=system_prompt,
-            model=agent.model,
-            max_tokens=agent.max_tokens,
-        )
-        async for chunk in text_gen:
-            full_text += chunk
-            yield sse("chat.content_chunk", text=chunk)
-    except ExternalServiceError as e:
-        yield sse("chat.error", message=str(e))
-        return
+    last_tool_call = None
 
-    # 保存 AI 回复（可能是空字符串，如果 AI 直接调工具未输出文字）
+    for _iteration in range(5):
+        try:
+            text_gen, tool_result = await client.stream_with_tools(
+                messages=loop_messages,
+                tools=ALL_TOOLS,  # type: ignore[arg-type]
+                system=system_prompt,
+                model=agent.model,
+                max_tokens=agent.max_tokens,
+            )
+            iter_text = ""
+            async for chunk in text_gen:
+                iter_text += chunk
+                yield sse("chat.content_chunk", text=chunk)
+        except ExternalServiceError as e:
+            yield sse("chat.error", message=str(e))
+            return
+
+        full_text += iter_text
+        last_tool_call = tool_result.tool_call
+
+        if not last_tool_call:
+            break
+
+        if last_tool_call.tool_name == HANDOFF_TOOL_NAME:
+            break
+
+        if last_tool_call.tool_name in QUERY_TOOL_NAMES:
+            yield sse("chat.tool_call", tool=last_tool_call.tool_name)
+            tool_response = await tools_service.execute_tool(
+                last_tool_call.tool_name, last_tool_call.tool_input
+            )
+            logger.info(
+                "tool_executed",
+                tool=last_tool_call.tool_name,
+                input=last_tool_call.tool_input,
+            )
+            # Build multi-turn: assistant turn with tool_use, then tool_result
+            assistant_content: list[dict[str, object]] = []
+            if iter_text:
+                assistant_content.append({"type": "text", "text": iter_text})
+            assistant_content.append({
+                "type": "tool_use",
+                "id": last_tool_call.tool_use_id,
+                "name": last_tool_call.tool_name,
+                "input": last_tool_call.tool_input,
+            })
+            loop_messages.append({"role": "assistant", "content": assistant_content})
+            loop_messages.append({
+                "role": "user",
+                "content": [{
+                    "type": "tool_result",
+                    "tool_use_id": last_tool_call.tool_use_id,
+                    "content": json.dumps(tool_response, ensure_ascii=False),
+                }],
+            })
+            continue
+
+        break  # unknown tool
+
+    # 保存 AI 全量回复
     if full_text:
         assistant_msg = Message(
             conversation_id=conv.id,
@@ -134,16 +183,12 @@ async def chat_stream(
         yield sse("chat.completed", message_id="")
 
     # 检查是否触发了 handoff 工具
-    if tool_result.tool_call and tool_result.tool_call.tool_name == HANDOFF_TOOL_NAME:
-        tool_input = tool_result.tool_call.tool_input
+    if last_tool_call and last_tool_call.tool_name == HANDOFF_TOOL_NAME:
+        tool_input = last_tool_call.tool_input
         reason: str = str(tool_input.get("reason", "AI 触发转人工"))
         summary: str = str(tool_input.get("summary", ""))
 
-        logger.info(
-            "chat_handoff_triggered",
-            conversation_id=str(conv.id),
-            reason=reason,
-        )
+        logger.info("chat_handoff_triggered", conversation_id=str(conv.id), reason=reason)
 
         yield sse("chat.tool_call", tool="transfer_to_human", reason=reason, summary=summary)
 
@@ -165,7 +210,7 @@ async def chat_stream(
         logger.info(
             "chat_handoff_completed",
             conversation_id=str(conv.id),
-            assigned_staff_id=str(updated_conv.assigned_staff_id)
-            if updated_conv.assigned_staff_id
-            else None,
+            assigned_staff_id=(
+                str(updated_conv.assigned_staff_id) if updated_conv.assigned_staff_id else None
+            ),
         )

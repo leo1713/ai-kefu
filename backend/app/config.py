@@ -38,5 +38,10 @@ class Settings(BaseSettings):
     wecom_token: str = ""
     wecom_encoding_aes_key: str = ""
 
+    # External tool APIs (optional; leave empty to use mock data)
+    order_api_url: str = ""
+    payment_api_url: str = ""
+    logistics_api_url: str = ""
+
 
 settings = Settings()

@@ -15,9 +15,15 @@ logger = structlog.get_logger()
 class ToolCallResult:
     """tool_use 调用结果，从 Claude 的非流式或流式响应中解析出来。"""
 
-    def __init__(self, tool_name: str, tool_input: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        tool_name: str,
+        tool_input: dict[str, Any],
+        tool_use_id: str = "",
+    ) -> None:
         self.tool_name = tool_name
         self.tool_input = tool_input
+        self.tool_use_id = tool_use_id
 
     def __repr__(self) -> str:
         return f"ToolCallResult(tool={self.tool_name!r}, input={self.tool_input!r})"
@@ -137,6 +143,7 @@ class ClaudeClient:
                             result.tool_call = ToolCallResult(
                                 tool_name=block.name,
                                 tool_input=dict(block.input),  # type: ignore[arg-type]
+                                tool_use_id=block.id,
                             )
                             break
             except APITimeoutError as e:
