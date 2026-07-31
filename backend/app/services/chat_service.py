@@ -16,7 +16,7 @@ from app.config import settings
 from app.core.exceptions import ExternalServiceError
 from app.models.conversation import Conversation
 from app.models.message import Message
-from app.services import conversation_service, rag_service, tools_service, visitor_service
+from app.services import conversation_service, qa_service, rag_service, tools_service, visitor_service
 from app.services.agent_service import seed_default_agent
 
 logger = structlog.get_logger()
@@ -92,9 +92,20 @@ async def chat_stream(
         visitor_id=str(visitor.id),
     )
 
-    # RAG：检索相关知识库内容注入系统提示
-    rag_results = await rag_service.search_chunks(db, message, top_k=3)
+    # QA 精确匹配（优先级最高）→ 注入 system_prompt
+    qa_hit = await qa_service.search_qa(db, message)
     system_prompt = agent.system_prompt
+    if qa_hit:
+        system_prompt = (
+            f"{system_prompt}\n\n"
+            "【QA 标准答案】以下是该问题的标准答案，请以此为基础进行回复，"
+            "可适当调整措辞使其更自然流畅：\n"
+            f"问：{qa_hit.question}\n"
+            f"答：{qa_hit.answer}"
+        )
+
+    # RAG 知识库补充
+    rag_results = await rag_service.search_chunks(db, message, top_k=3)
     if rag_results:
         context = "\n\n".join(f"[知识库] {r['content']}" for r in rag_results)
         system_prompt = f"{system_prompt}\n\n以下是相关知识库内容，请优先参考：\n{context}"
