@@ -11,13 +11,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.claude_client import ClaudeClient
 from app.ai.specialists import SPECIALIST_AGENTS
 from app.ai.streaming import sse
-from app.ai.tools import ALL_TOOLS, HANDOFF_TOOL_NAME, QUERY_TOOL_NAMES, ROUTE_TO_AGENT_TOOL_NAME, SPECIALIST_TOOLS
+from app.ai.tools import (
+    ALL_TOOLS,
+    HANDOFF_TOOL_NAME,
+    QUERY_TOOL_NAMES,
+    ROUTE_TO_AGENT_TOOL_NAME,
+    SPECIALIST_TOOLS,
+)
 from app.config import settings
 from app.core.exceptions import ExternalServiceError
 from app.models.conversation import Conversation
 from app.models.message import Message
-from app.services import conversation_service, qa_service, rag_service, tools_service, visitor_service
+from app.services import (
+    conversation_service,
+    qa_service,
+    rag_service,
+    tools_service,
+    visitor_service,
+    workflow_service,
+)
 from app.services.agent_service import seed_default_agent
+from app.services.workflow_executor import execute_workflow
 
 logger = structlog.get_logger()
 
@@ -92,7 +106,33 @@ async def chat_stream(
         visitor_id=str(visitor.id),
     )
 
-    # QA 精确匹配（优先级最高）→ 注入 system_prompt
+    # 工作流关键词触发（优先于 QA/RAG/Agent）
+    triggered_wf = await workflow_service.match_workflow(db, message)
+    if triggered_wf:
+        wf_text_parts: list[str] = []
+        async for event in execute_workflow(triggered_wf, message):
+            yield event
+            try:
+                ev = json.loads(event.removeprefix("data: ").strip())
+                if ev.get("event") == "chat.content_chunk":
+                    wf_text_parts.append(str(ev.get("text", "")))
+            except Exception:
+                pass
+        wf_text = "".join(wf_text_parts)
+        if wf_text:
+            wf_msg = Message(
+                conversation_id=conv.id,
+                role="assistant",
+                content=wf_text,
+                msg_type="text",
+            )
+            db.add(wf_msg)
+            await db.commit()
+            await db.refresh(wf_msg)
+            yield sse("chat.completed", message_id=str(wf_msg.id))
+        else:
+            yield sse("chat.completed", message_id="")
+        return
     qa_hit = await qa_service.search_qa(db, message)
     system_prompt = agent.system_prompt
     if qa_hit:

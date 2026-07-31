@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Text, func
+from sqlalchemy import JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -13,6 +13,7 @@ class Workflow(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(128))
     description: Mapped[str | None] = mapped_column(Text, default=None)
+    trigger_keywords: Mapped[list[str]] = mapped_column(JSON, default=list)
     definition: Mapped[str] = mapped_column(Text, default="{}")
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
