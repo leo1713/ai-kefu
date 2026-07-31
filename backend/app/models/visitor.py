@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Index, String, func
+from sqlalchemy import JSON, Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -21,6 +21,8 @@ class Visitor(Base):
     name: Mapped[str | None] = mapped_column(String(128), default=None)
     avatar: Mapped[str | None] = mapped_column(String(512), default=None)
     ai_disabled: Mapped[bool] = mapped_column(default=False)
+    tags: Mapped[list[Any]] = mapped_column(JSON, default=list, server_default="[]")
+    notes: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
