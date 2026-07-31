@@ -2,10 +2,11 @@
 
 ## 项目状态
 
-- **当前 Phase：** Phase 3 — 智能增强（进行中）
+- **当前 Phase：** 全部完成 🎉
 - **Phase 1 状态：** ✅ 已完成（2026-07-30）
 - **Phase 2 状态：** ✅ 已完成（2026-07-31）
-- **整体进度：** 92%（Sprint 3.3 完成）
+- **Phase 3 状态：** ✅ 已完成（2026-07-31）
+- **整体进度：** 100%
 
 ---
 
@@ -15,7 +16,7 @@
 |-------|------|------|----------|------|
 | 1 | MVP | 企业微信 + AI 知识库问答，能真实使用 | 4-6 周 | ✅ 已完成 |
 | 2 | 人工协作 | 转人工 + 客服工作台 + 工具调用 | 3-4 周 | ✅ 已完成 |
-| 3 | 智能增强 | 多 Agent + 工作流 + 数据看板 | 3-4 周 | 🔴 进行中 |
+| 3 | 智能增强 | 多 Agent + 工作流 + 数据看板 | 3-4 周 | ✅ 已完成 |
 
 ---
 
@@ -171,7 +172,7 @@
 | 3.1 | 多 Agent | 分诊 Agent、专业 Agent、路由逻辑 | ✅ 已完成 |
 | 3.2 | QA 知识库 | 精确匹配、批量导入 | ✅ 已完成 |
 | 3.3 | 工作流引擎 | DAG 执行器、节点类型、可视化编辑 | ✅ 已完成 |
-| 3.4 | 数据看板 | 统计接口、图表组件 |
+| 3.4 | 数据看板 | 统计接口、图表组件 | ✅ 已完成 |
 
 ---
 
@@ -250,22 +251,20 @@
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
 **最后更新：** 2026-07-31  
-**当前 Phase：** Phase 3 — 智能增强（Sprint 3.3 完成，进行中）  
+**当前 Phase：** 全部完成 🎉  
 **生产地址：** https://aigclin.com
 
 ### 本次完成
 
-Sprint 3.3 工作流引擎全部落地（commit 0000672，863行，10个文件）：
+Sprint 3.4 数据看板全部落地（commit 1f89bbb，211行，5个文件）：
 
-- **`app/models/workflow.py`**：新增 `trigger_keywords` JSON 列
-- **Alembic 迁移**：`f7a8b9c0d1e2` — `ALTER TABLE workflows ADD trigger_keywords`
-- **`app/services/workflow_service.py`**：CRUD + `match_workflow` 关键词匹配（任意关键词命中即触发）
-- **`app/services/workflow_executor.py`**：DAG 执行器，4种节点（send_message/condition/tool_call/end），MAX_STEPS=20
-- **`app/api/v1/workflows.py`**：工作流 CRUD REST 接口
-- **`app/main.py`**：注册 workflows router
-- **`app/services/chat_service.py`**：触发优先级：工作流关键词 > QA 精确匹配 > RAG > Agent
-- **`frontend/admin/src/api/workflows.ts`**：API client
-- **`frontend/admin/src/pages/Workflows.tsx`**：节点列表表单编辑器（无 ReactFlow）
+- **`app/services/stats_service.py`**：总览统计（总对话/消息/访客/转人工率）+ 近N天逐日统计
+- **`app/api/v1/stats.py`**：`GET /api/v1/stats/overview` + `GET /api/v1/stats/daily?days=N`
+- **`app/main.py`**：注册 stats router
+- **`frontend/admin/src/api/stats.ts`**：API client
+- **`frontend/admin/src/pages/Dashboard.tsx`**：4张指标卡 + 2张 SVG 柱状图（每日对话数/消息数），无额外依赖
+
+**Phase 3 全部 Sprint（3.1-3.4）已完成，三个 Phase 全部交付。**
 
 ### 遗留问题
 
@@ -276,8 +275,8 @@ Sprint 3.3 工作流引擎全部落地（commit 0000672，863行，10个文件�
 
 ### 下一步行动
 
-1. **`make migrate`** — 执行 `f7a8b9c0d1e2` 迁移，添加 `trigger_keywords` 列
-2. **Sprint 3.4 — 数据看板**：统计接口 + 图表组件
+1. **端到端验收**：完整走一遍企业微信 → AI回复 → 转人工 → 工作流触发 → 数据看板刷新
+2. **VPS 部署上线**：`make migrate`（f7a8b9c0d1e2 迁移）→ `docker compose pull && docker compose up -d`
 
 ---
 
