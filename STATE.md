@@ -154,8 +154,8 @@
 
 | Sprint | 目标 | 核心任务 |
 |--------|------|----------|
-| 2.1 | 转人工机制 | handoff 工具、AI 禁用标记、客服分配 |
-| 2.2 | 客服工作台 | WebSocket 实时通信、会话列表、回复功能 |
+| 2.1 | 转人工机制 | handoff 工具、AI 禁用标记、客服分配 | ✅ 已完成 |
+| 2.2 | 客服工作台 | WebSocket 实时通信、会话列表、回复功能 | ✅ 已完成 |
 | 2.3 | 工具调用 | 订单查询、支付查询、物流查询集成 |
 | 2.4 | 访客管理 | 标签系统、信息完善、搜索筛选 |
 
@@ -248,54 +248,32 @@
 
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
-**最后更新：** 2026-07-30  
-**当前 Phase：** Phase 2 — 人工协作（Sprint 2.1 代码完成，等待验收）  
+**最后更新：** 2026-07-31  
+**当前 Phase：** Phase 2 — 人工协作（Sprint 2.2 代码完成，等待端到端验收）  
 **生产地址：** https://aigclin.com
 
 ### 本次完成
 
-Sprint 2.1 转人工机制全部落地（代码 + 测试）：
-- **AI 工具层**：`transfer_to_human` 工具定义，`chat_service` 检测触发 → 发 `chat.handoff` SSE 事件
-- **会话状态机**：`active → transferred → closed`，`close_conversation()` 新增
-- **自动分配**：`_auto_assign_staff()` 轮询负载最低客服
-- **Staff 管理 API**：`GET/POST/PATCH /api/v1/staff`，`staff_service.py`
-- **Conversations API 扩展**：`?status=` 过滤、`/transfer`、`/assign`、`/close` 端点
-- **数据库迁移**：`alembic c1a2b3d4` — handoff 相关字段
-- **前端 Conversations.tsx**：状态过滤按钮（全部/进行中/已转人工/已关闭）+ 转人工原因列 + 关闭操作
-- **前端 Staff.tsx**：客服列表 + 添加 / 启用 / 停用
-- **单元测试**：`test_conversation_service.py`（6 个）+ `test_chat_service.py` 补充 handoff 场景
+Sprint 2.2 客服工作台全部落地：
+
+- **`main.py`**：注册之前只 import 未挂载的 `ws_router`（`/ws/staff` 端点开始生效）
+- **`wecom_service.py`**：transferred 会话收到新消息后 `db.refresh` + `manager.send_to_staff` 推 `new_message` 事件；handoff 转人工后推 `conversation_transferred` 事件
+- **`api/v1/conversations.py`**：新增 `POST /{id}/reply` 端点，保存客服消息并异步发 WeCom，失败仅 warn 不阻断
+- **`api/conversations.ts`**：新增 `replyMessage` 前端 API 函数
+- **`pages/Workbench.tsx`**：全新客服工作台页面，含登录表单 + 左侧会话列表（WS 实时推入） + 右侧消息时间线（自动滚底） + 底部发消息输入框；左上角圆点显示 WS 连接状态
+- **`App.tsx`**：导航新增「客服工作台」入口，注册 `/workbench` 路由
+- **`vite.config.ts`**：新增 `/ws` 代理（`ws: true`），本地开发 WebSocket 穿透到后端
 
 ### 遗留问题
 
-- **Sprint 2.1 端到端验收**：本地 `make dev` 后，发"我要退款，帮我转人工"，确认管理后台会话变 `transferred`
+- **Sprint 2.2 端到端验收待执行**：`make dev` → 访问 `/workbench` 登录 → 企业微信触发转人工 → 工作台实时收到会话 → 客服回复 → 企业微信收到回复
+- **Sprint 2.1 端到端验收**：`make dev`，发"我要退款，帮我转人工"，确认管理后台会话变 `transferred`
 - **Embedding API 未配置**：EMBEDDING_API_KEY 为空，RAG 降级 ILIKE
-- **passlib 依赖**：可在 Sprint 2.2 期间清理
-
-### 下一步行动
-
-1. **（可选）本地验收 Sprint 2.1**：AI 触发 handoff → 管理后台可见 transferred 状态 + 关闭操作可用
-2. **Sprint 2.2 — 客服工作台**：WebSocket 实时推送、客服接管界面、通过企业微信发回消息
-
-### 本次完成
-
-Sprint 2.1 转人工机制全部实现：
-- Staff 管理：schemas/staff.py + services/staff_service.py + api/v1/staff.py（GET/POST/PATCH）
-- Conversations API 扩展：GET ?status= 过滤、POST /{id}/transfer、POST /{id}/assign、PATCH /{id}/close
-- conversation_service.close_conversation() 新增
-- 前端 Conversations.tsx：状态过滤按钮（全部/进行中/已转人工/已关闭）+ transfer_reason 列 + 关闭操作
-- 单元测试：tests/unit/test_services/test_conversation_service.py（6 个测试）
-
-### 遗留问题
-
-- **Sprint 2.1 端到端验收待执行**：需在本地或 VPS 验证 AI 触发 handoff → 管理后台可见 transferred 状态
-- **Embedding API 未配置**：EMBEDDING_API_KEY 为空，RAG 降级到 ILIKE
 - **passlib 依赖**：可清理
 
 ### 下一步行动
 
-1. **（可选验收）** `make dev`，发一条"我要退款，帮我转人工"，确认管理后台会话状态变 transferred
-2. **Sprint 2.2 — 客服工作台：** WebSocket 实时推送、客服接管界面、发送消息到企业微信
-3. Sprint 2.3 工具调用 / Sprint 2.4 访客管理（按需排期）
+1. **Sprint 2.3 — 工具调用**：订单查询、支付查询、物流查询集成
 
 ---
 
