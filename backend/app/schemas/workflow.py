@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 class WorkflowNode(BaseModel):
     id: str
-    type: Literal["send_message", "condition", "tool_call", "end"]
+    type: Literal["send_message", "condition", "tool_call", "end", "llm"]
     data: dict[str, Any] = {}
     next: str | None = None
     next_true: str | None = None

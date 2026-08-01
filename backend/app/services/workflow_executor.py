@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import AsyncGenerator
 from typing import Any
 
 import structlog
 
+from app.ai.claude_client import ClaudeClient
 from app.ai.streaming import sse
+from app.config import settings
+from app.core.exceptions import ExternalServiceError
 from app.models.workflow import Workflow
 from app.services import tools_service
 
@@ -84,6 +88,28 @@ async def execute_workflow(
                 except Exception as e:
                     logger.warning("workflow_tool_failed", tool=tool_name, error=str(e))
                     context[f"tool_result_{tool_name}"] = f"查询失败：{e}"
+            current_id = node.get("next")
+
+        elif node_type == "llm":
+            prompt_template: str = data.get("prompt_template", "{{message}}")
+            # replace all {{key}} placeholders from context
+            def _replace(m: re.Match[str]) -> str:
+                return context.get(m.group(1), m.group(0))
+            prompt = re.sub(r"\{\{(\w+)\}\}", _replace, prompt_template)
+            logger.info("workflow_llm_node", workflow_id=str(workflow.id))
+            client = ClaudeClient(
+                api_key=settings.anthropic_api_key,
+                base_url=settings.anthropic_base_url,
+            )
+            try:
+                async for chunk in client.stream_text(
+                    messages=[{"role": "user", "content": prompt}],
+                ):
+                    yield sse("chat.content_chunk", text=chunk)
+            except ExternalServiceError as e:
+                logger.warning("workflow_llm_failed", error=str(e))
+                yield sse("chat.error", message=str(e))
+                return
             current_id = node.get("next")
 
         else:

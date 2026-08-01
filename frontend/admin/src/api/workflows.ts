@@ -1,6 +1,6 @@
 export interface WorkflowNode {
   id: string
-  type: 'send_message' | 'condition' | 'tool_call' | 'end'
+  type: 'send_message' | 'condition' | 'tool_call' | 'end' | 'llm'
   data: Record<string, any>
   next?: string | null
   next_true?: string | null

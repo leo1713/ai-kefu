@@ -15,6 +15,7 @@ const NODE_LABELS: Record<NodeType, string> = {
   send_message: '发消息',
   condition: '条件判断',
   tool_call: '调工具',
+  llm: 'LLM 生成',
   end: '结束',
 }
 
@@ -120,6 +121,19 @@ function NodeEditor({ nodes, onChange }: NodeEditorProps) {
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+          {node.type === 'llm' && (
+            <div className="space-y-1.5">
+              <textarea
+                value={node.data.prompt_template ?? ''}
+                onChange={e => updateData(i, { prompt_template: e.target.value })}
+                placeholder={`Prompt 模板，支持占位符：\n{{message}} — 用户消息\n{{tool_result_query_order}} — 工具结果`}
+                rows={4}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-400 font-mono"
+              />
+              <p className="text-xs text-gray-400">占位符：<code>{'{{message}}'}</code>、<code>{'{{tool_result_工具名}}'}</code></p>
             </div>
           )}
 
