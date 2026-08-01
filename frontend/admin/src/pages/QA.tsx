@@ -168,7 +168,7 @@ export default function QAPage() {
       {showBatch && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 space-y-3">
           <p className="text-sm font-medium text-gray-700">批量导入 JSON</p>
-          <p className="text-xs text-gray-500">格式：<code>[{'{'}{"question":"...","answer":"...","category":"...","keywords":["kw1"]}{'}'}]</code></p>
+          <p className="text-xs text-gray-500">格式：JSON 数组，每项包含 question、answer、category、keywords 字段</p>
           <textarea
             value={batchJson}
             onChange={e => setBatchJson(e.target.value)}
