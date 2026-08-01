@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,7 @@ from app.models.visitor import Visitor
 
 
 async def get_overview(db: AsyncSession) -> dict[str, object]:
-    now = datetime.now(UTC)
+    now = datetime.utcnow()
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_ago = today - timedelta(days=7)
 
@@ -52,7 +52,7 @@ async def get_daily_stats(db: AsyncSession, days: int = 7) -> list[dict[str, obj
     result = []
     for i in range(days - 1, -1, -1):
         d = today - timedelta(days=i)
-        start = datetime(d.year, d.month, d.day, tzinfo=UTC)
+        start = datetime(d.year, d.month, d.day)
         end = start + timedelta(days=1)
         conv_count = await _count(
             db, Conversation,
