@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from collections.abc import AsyncGenerator
 
@@ -9,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.claude_client import ClaudeClient
-from app.ai.specialists import SPECIALIST_AGENTS
 from app.ai.streaming import sse
 from app.ai.tools import (
     ALL_TOOLS,
@@ -20,6 +20,7 @@ from app.ai.tools import (
 )
 from app.config import settings
 from app.core.exceptions import ExternalServiceError
+from app.models.agent import Agent
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.services import (
@@ -34,6 +35,24 @@ from app.services.agent_service import seed_default_agent
 from app.services.workflow_executor import execute_workflow
 
 logger = structlog.get_logger()
+
+_specialist_cache: dict[str, Agent] | None = None
+_specialist_cache_time: float = 0.0
+_SPECIALIST_CACHE_TTL = 60.0
+
+
+async def _get_specialist_agents(db: AsyncSession) -> dict[str, Agent]:
+    global _specialist_cache, _specialist_cache_time
+    now = time.monotonic()
+    if _specialist_cache is not None and now - _specialist_cache_time < _SPECIALIST_CACHE_TTL:
+        return _specialist_cache
+    result = await db.execute(
+        select(Agent).where(Agent.slug.is_not(None), Agent.deleted_at.is_(None))
+    )
+    agents = result.scalars().all()
+    _specialist_cache = {a.slug: a for a in agents if a.slug}
+    _specialist_cache_time = now
+    return _specialist_cache
 
 
 async def chat_stream(
@@ -226,7 +245,8 @@ async def chat_stream(
     if last_tool_call and last_tool_call.tool_name == ROUTE_TO_AGENT_TOOL_NAME:
         routing_slug = last_tool_call.tool_input.get("agent", "")
         routing_reason = last_tool_call.tool_input.get("reason", "")
-        specialist = SPECIALIST_AGENTS.get(routing_slug)
+        specialist_agents = await _get_specialist_agents(db)
+        specialist = specialist_agents.get(routing_slug)
 
         yield sse("chat.tool_call", tool=ROUTE_TO_AGENT_TOOL_NAME, agent=routing_slug, reason=routing_reason)
         logger.info("routing_to_specialist", agent=routing_slug, reason=routing_reason)

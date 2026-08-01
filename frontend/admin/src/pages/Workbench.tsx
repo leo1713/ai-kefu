@@ -79,8 +79,10 @@ function WorkbenchPanel({ token }: { token: string }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [wsStatus, setWsStatus] = useState<'connecting' | 'open' | 'closed'>('connecting')
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'open' | 'closed' | 'failed'>('connecting')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const retriesRef = useRef(0)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     getConversations('transferred').then(setConversations).catch(console.error)
@@ -96,49 +98,76 @@ function WorkbenchPanel({ token }: { token: string }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const RETRY_DELAYS = [3000, 6000, 12000, 24000, 48000]
+
   useEffect(() => {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const ws = new WebSocket(`${proto}//${window.location.host}/ws/staff?token=${token}`)
-    setWsStatus('connecting')
+    let ws: WebSocket | null = null
+    let hb: ReturnType<typeof setInterval> | null = null
+    let destroyed = false
 
-    ws.onopen = () => setWsStatus('open')
-    ws.onclose = () => setWsStatus('closed')
+    const connect = () => {
+      if (destroyed) return
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      ws = new WebSocket(`${proto}//${window.location.host}/ws/staff?token=${token}`)
+      setWsStatus('connecting')
 
-    ws.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data as string)
-        if (data.event === 'new_message') {
-          setSelectedId(prev => {
-            if (prev === data.conversation_id) {
-              setMessages(msgs => [...msgs, data.message as Message])
-            }
-            return prev
-          })
-          setConversations(prev => {
-            const idx = prev.findIndex(c => c.id === data.conversation_id)
-            if (idx === -1) return prev
-            const updated = [...prev]
-            updated[idx] = { ...updated[idx], updated_at: new Date().toISOString() }
-            return [updated[idx], ...updated.filter((_, i) => i !== idx)]
-          })
-        } else if (data.event === 'conversation_transferred') {
-          const conv = data.conversation as Conversation
-          setConversations(prev =>
-            prev.some(c => c.id === conv.id) ? prev : [conv, ...prev]
-          )
+      ws.onopen = () => {
+        retriesRef.current = 0
+        setWsStatus('open')
+        hb = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) ws.send('ping')
+        }, 25000)
+      }
+
+      ws.onclose = () => {
+        if (hb) { clearInterval(hb); hb = null }
+        if (destroyed) return
+        const attempt = retriesRef.current
+        if (attempt >= RETRY_DELAYS.length) {
+          setWsStatus('failed')
+          return
         }
-      } catch {
-        // ignore malformed frames
+        setWsStatus('closed')
+        retriesRef.current += 1
+        reconnectTimerRef.current = setTimeout(connect, RETRY_DELAYS[attempt])
+      }
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data as string)
+          if (data.event === 'new_message') {
+            setSelectedId(prev => {
+              if (prev === data.conversation_id) {
+                setMessages(msgs => [...msgs, data.message as Message])
+              }
+              return prev
+            })
+            setConversations(prev => {
+              const idx = prev.findIndex(c => c.id === data.conversation_id)
+              if (idx === -1) return prev
+              const updated = [...prev]
+              updated[idx] = { ...updated[idx], updated_at: new Date().toISOString() }
+              return [updated[idx], ...updated.filter((_, i) => i !== idx)]
+            })
+          } else if (data.event === 'conversation_transferred') {
+            const conv = data.conversation as Conversation
+            setConversations(prev =>
+              prev.some(c => c.id === conv.id) ? prev : [conv, ...prev]
+            )
+          }
+        } catch {
+          // ignore malformed frames
+        }
       }
     }
 
-    const hb = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) ws.send('ping')
-    }, 25000)
+    connect()
 
     return () => {
-      clearInterval(hb)
-      ws.close()
+      destroyed = true
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
+      if (hb) clearInterval(hb)
+      ws?.close()
     }
   }, [token])
 
@@ -175,6 +204,11 @@ function WorkbenchPanel({ token }: { token: string }) {
             title={wsStatus}
           />
         </div>
+        {wsStatus === 'failed' && (
+          <div className="px-4 py-2 bg-red-50 border-b border-red-200 text-xs text-red-600">
+            连接失败，请刷新页面
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
             <p className="text-center text-gray-400 text-xs mt-10">暂无待接会话</p>

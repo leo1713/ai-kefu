@@ -17,6 +17,7 @@ class Agent(Base):
     temperature: Mapped[float] = mapped_column(default=0.3)
     max_tokens: Mapped[int] = mapped_column(default=2000)
     is_default: Mapped[bool] = mapped_column(default=False)
+    slug: Mapped[str | None] = mapped_column(String(64), unique=True, default=None)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()

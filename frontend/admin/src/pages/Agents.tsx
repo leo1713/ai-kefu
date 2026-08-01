@@ -9,6 +9,7 @@ interface Agent {
   temperature: number
   max_tokens: number
   is_default: boolean
+  slug: string | null
 }
 
 interface EditState {
@@ -17,6 +18,7 @@ interface EditState {
   model: string
   temperature: number
   max_tokens: number
+  slug: string
 }
 
 export default function Agents() {
@@ -42,6 +44,7 @@ export default function Agents() {
       model: agent.model,
       temperature: agent.temperature,
       max_tokens: agent.max_tokens,
+      slug: agent.slug ?? '',
     })
     setError(null)
   }
@@ -56,7 +59,10 @@ export default function Agents() {
     setSaving(true)
     setError(null)
     try {
-      const updated = await updateAgent(agentId, editState)
+      const updated = await updateAgent(agentId, {
+        ...editState,
+        slug: editState.slug.trim() || null,
+      })
       setAgents(prev => prev.map(a => (a.id === agentId ? { ...a, ...updated } : a)))
       setEditingId(null)
       setEditState(null)
@@ -196,6 +202,23 @@ export default function Agents() {
                       />
                     ) : (
                       <p className="text-sm text-gray-700">{agent.max_tokens}</p>
+                    )}
+                  </div>
+                  <div className="col-span-3">
+                    <label className="block text-xs text-gray-500 mb-1">
+                      Slug（专业路由标识，如 refund / logistics）
+                    </label>
+                    {isEditing ? (
+                      <input
+                        className="w-full text-sm border border-gray-300 rounded p-1.5 outline-none focus:border-blue-400 font-mono"
+                        value={editState!.slug}
+                        placeholder="留空则不作为专业 Agent"
+                        onChange={e => setEditState(s => s && { ...s, slug: e.target.value })}
+                      />
+                    ) : (
+                      <p className="text-sm font-mono text-gray-700">
+                        {agent.slug ?? <span className="text-gray-400">（未设置）</span>}
+                      </p>
                     )}
                   </div>
                 </div>

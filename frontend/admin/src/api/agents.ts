@@ -6,6 +6,7 @@ interface Agent {
   temperature: number
   max_tokens: number
   is_default: boolean
+  slug: string | null
   created_at: string
   updated_at: string
 }
@@ -16,6 +17,7 @@ interface AgentUpdate {
   model?: string
   temperature?: number
   max_tokens?: number
+  slug?: string | null
 }
 
 export async function listAgents(): Promise<Agent[]> {

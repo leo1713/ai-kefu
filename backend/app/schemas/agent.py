@@ -19,6 +19,7 @@ class AgentUpdate(BaseModel):
     model: str | None = None
     temperature: float | None = Field(default=None, ge=0.0, le=1.0)
     max_tokens: int | None = Field(default=None, ge=1, le=8096)
+    slug: str | None = None
 
 
 class AgentResponse(BaseModel):
@@ -31,5 +32,6 @@ class AgentResponse(BaseModel):
     temperature: float
     max_tokens: int
     is_default: bool
+    slug: str | None
     created_at: datetime
     updated_at: datetime
