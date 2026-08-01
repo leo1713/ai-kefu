@@ -51,7 +51,7 @@ async def update_qa(
     return QAPairResponse.model_validate(pair)
 
 
-@router.delete("/{qa_id}", status_code=204)
+@router.delete("/{qa_id}", status_code=200)
 async def delete_qa(
     qa_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
