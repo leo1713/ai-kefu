@@ -59,7 +59,7 @@ async def update_workflow(
     return WorkflowResponse.model_validate(wf)
 
 
-@router.delete("/{workflow_id}", status_code=204)
+@router.delete("/{workflow_id}", status_code=200)
 async def delete_workflow(
     workflow_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
