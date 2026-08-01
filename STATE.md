@@ -250,33 +250,29 @@
 
 > 每次会话结束时更新此区块。新会话开始时先读此区块。
 
-**最后更新：** 2026-07-31  
+**最后更新：** 2026-08-01  
 **当前 Phase：** 全部完成 🎉  
 **生产地址：** https://aigclin.com
 
 ### 本次完成
 
-Sprint 3.4 数据看板全部落地（commit 1f89bbb，211行，5个文件）：
+VPS 部署上线：
 
-- **`app/services/stats_service.py`**：总览统计（总对话/消息/访客/转人工率）+ 近N天逐日统计
-- **`app/api/v1/stats.py`**：`GET /api/v1/stats/overview` + `GET /api/v1/stats/daily?days=N`
-- **`app/main.py`**：注册 stats router
-- **`frontend/admin/src/api/stats.ts`**：API client
-- **`frontend/admin/src/pages/Dashboard.tsx`**：4张指标卡 + 2张 SVG 柱状图（每日对话数/消息数），无额外依赖
-
-**Phase 3 全部 Sprint（3.1-3.4）已完成，三个 Phase 全部交付。**
+- **Bug 修复**：`qa.py` / `workflows.py` DELETE 接口 `status_code=204` 改为 `200`（FastAPI 204 不允许返回 body 导致启动报错）
+- **Alembic 迁移**：VPS 上全部迁移执行完成（含 `f7a8b9c0d1e2` trigger_keywords）
+- **生产验证**：`https://aigclin.com/health` 返回 `{"status":"ok"}`
+- **`docs/操作手册.md`**：新增运维操作手册
 
 ### 遗留问题
 
-- **端到端验收待执行**：发"我的快递没动静，订单12345" → 确认路由到物流专员 → 调 `query_logistics` → 返回具体信息
 - **工具 API 未配置**：`ORDER/PAYMENT/LOGISTICS_API_URL` 为空，当前用 mock 数据
 - **Embedding API 未配置**：EMBEDDING_API_KEY 为空，RAG 降级 ILIKE
 - **passlib 依赖**：可清理
 
 ### 下一步行动
 
-1. **端到端验收**：完整走一遍企业微信 → AI回复 → 转人工 → 工作流触发 → 数据看板刷新
-2. **VPS 部署上线**：`make migrate`（f7a8b9c0d1e2 迁移）→ `docker compose pull && docker compose up -d`
+1. **端到端验收**：企业微信发消息测试完整流程（AI回复 → 转人工 → 工作流触发 → 数据看板刷新）
+2. **配置真实 API Key**：EMBEDDING_API_KEY / ORDER_API_URL / PAYMENT_API_URL / LOGISTICS_API_URL
 
 ---
 
