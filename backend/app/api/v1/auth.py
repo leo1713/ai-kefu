@@ -1,17 +1,14 @@
-import uuid
-
 from fastapi import APIRouter, Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decode_access_token
+from app.core.deps import get_current_user
 from app.database import get_db
+from app.models.staff import Staff
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.staff import StaffResponse
-from app.services import auth_service, staff_service
+from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-_bearer = HTTPBearer()
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -24,16 +21,14 @@ async def login(
 
 @router.post("/init-admin", status_code=201)
 async def init_admin(db: AsyncSession = Depends(get_db)) -> dict[str, str]:
+    """
+    初始化默认管理员账号。受 ALLOW_INIT_ADMIN 和 DEFAULT_ADMIN_PASSWORD 环境变量控制。
+    首次使用后应将 ALLOW_INIT_ADMIN 改回 false 并重启服务。
+    """
     staff = await auth_service.seed_default_admin(db)
     return {"username": staff.username, "display_name": staff.display_name}
 
 
 @router.get("/me", response_model=StaffResponse)
-async def get_me(
-    creds: HTTPAuthorizationCredentials = Depends(_bearer),
-    db: AsyncSession = Depends(get_db),
-) -> StaffResponse:
-    payload = decode_access_token(creds.credentials)
-    staff_id = uuid.UUID(str(payload["sub"]))
-    staff = await staff_service.get_staff(db, staff_id)
-    return StaffResponse.model_validate(staff)
+async def get_me(current_user: Staff = Depends(get_current_user)) -> StaffResponse:
+    return StaffResponse.model_validate(current_user)

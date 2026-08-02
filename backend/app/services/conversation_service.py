@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.conversation import Conversation
@@ -108,34 +108,36 @@ async def assign_staff(
 async def _auto_assign_staff(
     db: AsyncSession, conversation_id: uuid.UUID
 ) -> Staff | None:
-    """轮询分配：找当前活跃会话数最少的客服。"""
-    result = await db.execute(
-        select(Staff).where(
+    """轮询分配：找当前 transferred 会话数最少的活跃客服（单次 GROUP BY 查询）。"""
+    # 先取所有活跃客服 ID
+    staff_result = await db.execute(
+        select(Staff.id).where(
             Staff.is_active.is_(True),
             Staff.deleted_at.is_(None),
         )
     )
-    staff_list = list(result.scalars().all())
-    if not staff_list:
+    staff_ids = [row[0] for row in staff_result.all()]
+    if not staff_ids:
         return None
 
-    # 统计每个客服当前的 transferred 会话数
-    min_count = None
-    chosen: Staff | None = None
-    for staff in staff_list:
-        count_result = await db.execute(
-            select(Conversation).where(
-                Conversation.assigned_staff_id == staff.id,
-                Conversation.status == "transferred",
-                Conversation.deleted_at.is_(None),
-            )
+    # 一次查询统计每位客服当前 transferred 会话数
+    count_col = func.count(Conversation.id).label("conv_count")
+    count_result = await db.execute(
+        select(Conversation.assigned_staff_id, count_col)
+        .where(
+            Conversation.assigned_staff_id.in_(staff_ids),
+            Conversation.status == "transferred",
+            Conversation.deleted_at.is_(None),
         )
-        count = len(list(count_result.scalars().all()))
-        if min_count is None or count < min_count:
-            min_count = count
-            chosen = staff
+        .group_by(Conversation.assigned_staff_id)
+    )
+    load_map: dict[uuid.UUID, int] = {row[0]: row[1] for row in count_result.all()}
 
-    return chosen
+    # 选负载最小的客服（没有分配记录的视为 0）
+    chosen_id = min(staff_ids, key=lambda sid: load_map.get(sid, 0))
+
+    chosen_result = await db.execute(select(Staff).where(Staff.id == chosen_id))
+    return chosen_result.scalar_one_or_none()
 
 
 async def close_conversation(
@@ -181,6 +183,40 @@ async def reply_message(
     await db.commit()
     await db.refresh(msg)
     return msg, str(external_userid)
+
+
+async def reply_and_send_wecom(
+    db: AsyncSession,
+    conversation_id: uuid.UUID,
+    content: str,
+) -> Message:
+    """
+    保存客服回复，并尝试通过企业微信将消息发送给访客。
+
+    企微发送失败时记录 warning 但不影响主流程（消息已写库）。
+    """
+    import structlog as _structlog
+
+    _logger = _structlog.get_logger()
+
+    msg, visitor_external_userid = await reply_message(db, conversation_id, content)
+    try:
+        from app.config import settings as cfg
+        from app.services.wecom_service import get_client
+
+        client = get_client()
+        await client.send_text(
+            to_user=visitor_external_userid,
+            agent_id=cfg.wecom_agent_id,
+            content=content,
+        )
+    except Exception as e:
+        _logger.warning(
+            "wecom_reply_failed",
+            conversation_id=str(conversation_id),
+            error=str(e),
+        )
+    return msg
 
 
 async def list_all(

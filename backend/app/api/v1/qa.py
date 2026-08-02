@@ -6,7 +6,9 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.deps import get_current_user
 from app.database import get_db
+from app.models.staff import Staff
 from app.schemas.qa_pair import QAPairCreate, QAPairResponse, QAPairUpdate
 from app.services import qa_service
 
@@ -20,10 +22,14 @@ async def list_qa(
     include_inactive: bool = Query(default=False),
     limit: int = Query(default=100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> list[QAPairResponse]:
     pairs = await qa_service.list_qa(
-        db, search=search, category=category,
-        include_inactive=include_inactive, limit=limit,
+        db,
+        search=search,
+        category=category,
+        include_inactive=include_inactive,
+        limit=limit,
     )
     return [QAPairResponse.model_validate(p) for p in pairs]
 
@@ -32,10 +38,14 @@ async def list_qa(
 async def create_qa(
     body: QAPairCreate,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> QAPairResponse:
     pair = await qa_service.create_qa(
-        db, question=body.question, answer=body.answer,
-        keywords=body.keywords, category=body.category,
+        db,
+        question=body.question,
+        answer=body.answer,
+        keywords=body.keywords,
+        category=body.category,
     )
     return QAPairResponse.model_validate(pair)
 
@@ -45,6 +55,7 @@ async def update_qa(
     qa_id: uuid.UUID,
     body: QAPairUpdate,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> QAPairResponse:
     updates = body.model_dump(exclude_unset=True)
     pair = await qa_service.update_qa(db, qa_id, **updates)
@@ -55,6 +66,7 @@ async def update_qa(
 async def delete_qa(
     qa_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> None:
     await qa_service.delete_qa(db, qa_id)
 
@@ -71,6 +83,7 @@ class BatchImportResponse(BaseModel):
 async def batch_import(
     body: BatchImportRequest,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> BatchImportResponse:
     items = [i.model_dump() for i in body.items]
     count = await qa_service.batch_import(db, items)

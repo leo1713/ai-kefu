@@ -5,7 +5,9 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.deps import get_current_user
 from app.database import get_db
+from app.models.staff import Staff
 from app.schemas.visitor import VisitorResponse, VisitorUpdateRequest
 from app.services import visitor_service
 
@@ -18,6 +20,7 @@ async def list_visitors(
     tag: str | None = Query(default=None, description="按标签精确过滤"),
     limit: int = Query(default=50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> list[VisitorResponse]:
     visitors = await visitor_service.list_all(db, search=search, tag=tag, limit=limit)
     return [VisitorResponse.model_validate(v) for v in visitors]
@@ -28,6 +31,7 @@ async def update_visitor(
     visitor_id: uuid.UUID,
     body: VisitorUpdateRequest,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> VisitorResponse:
     updates = body.model_dump(exclude_unset=True)
     visitor = await visitor_service.update_visitor(db, visitor_id, **updates)

@@ -28,17 +28,24 @@ async def login(db: AsyncSession, username: str, password: str) -> str:
 
 
 async def seed_default_admin(db: AsyncSession) -> Staff:
+    from app.config import settings
+    from app.core.exceptions import PermissionError, ValidationError
+
+    if not settings.allow_init_admin:
+        raise PermissionError("init-admin 未启用，请在 .env 中设置 ALLOW_INIT_ADMIN=true")
+    if not settings.default_admin_password:
+        raise ValidationError("DEFAULT_ADMIN_PASSWORD 未配置，请在 .env 中设置初始密码")
+
     result = await db.execute(select(Staff).where(Staff.username == "admin"))
     existing = result.scalar_one_or_none()
     if existing:
         return existing
     admin = Staff(
         username="admin",
-        hashed_password=hash_password("admin123"),
+        hashed_password=hash_password(settings.default_admin_password),
         display_name="管理员",
     )
     db.add(admin)
     await db.commit()
     await db.refresh(admin)
     return admin
-

@@ -1,14 +1,18 @@
 import uuid
 
-import structlog
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.deps import get_current_user
 from app.database import get_db
-from app.schemas.conversation import AssignStaffRequest, ConversationResponse, ReplyRequest, TransferRequest
+from app.models.staff import Staff
+from app.schemas.conversation import (
+    AssignStaffRequest,
+    ConversationResponse,
+    ReplyRequest,
+    TransferRequest,
+)
 from app.services import conversation_service
-
-logger = structlog.get_logger()
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -20,6 +24,7 @@ async def list_conversations(
     ),
     limit: int = Query(default=50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> list[dict[str, object]]:
     return await conversation_service.list_all(db, limit=limit, status=status)
 
@@ -28,6 +33,7 @@ async def list_conversations(
 async def get_conversation_messages(
     conversation_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> list[dict[str, object]]:
     msgs = await conversation_service.get_messages(db, conversation_id)
     return [
@@ -47,6 +53,7 @@ async def transfer_conversation(
     conversation_id: uuid.UUID,
     body: TransferRequest,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> ConversationResponse:
     conv = await conversation_service.transfer_conversation(
         db, conversation_id=conversation_id, reason=body.reason
@@ -59,6 +66,7 @@ async def assign_staff_to_conversation(
     conversation_id: uuid.UUID,
     body: AssignStaffRequest,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> ConversationResponse:
     conv = await conversation_service.assign_staff(
         db, conversation_id=conversation_id, staff_id=body.staff_id
@@ -70,6 +78,7 @@ async def assign_staff_to_conversation(
 async def close_conversation(
     conversation_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> ConversationResponse:
     conv = await conversation_service.close_conversation(db, conversation_id)
     return ConversationResponse.model_validate(conv)
@@ -80,21 +89,11 @@ async def reply_to_conversation(
     conversation_id: uuid.UUID,
     body: ReplyRequest,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> dict[str, object]:
-    msg, visitor_external_userid = await conversation_service.reply_message(
+    msg = await conversation_service.reply_and_send_wecom(
         db, conversation_id=conversation_id, content=body.content
     )
-    try:
-        from app.config import settings as cfg
-        from app.services.wecom_service import get_client
-        client = get_client()
-        await client.send_text(
-            to_user=visitor_external_userid,
-            agent_id=cfg.wecom_agent_id,
-            content=body.content,
-        )
-    except Exception as e:
-        logger.warning("wecom_reply_failed", conversation_id=str(conversation_id), error=str(e))
     return {
         "id": str(msg.id),
         "role": msg.role,

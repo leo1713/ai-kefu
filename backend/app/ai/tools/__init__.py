@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.ai.tools.handoff import HANDOFF_TOOL, HANDOFF_TOOL_NAME
 from app.ai.tools.query import (
     LOGISTICS_QUERY_TOOL,
@@ -10,7 +12,7 @@ from app.ai.tools.query import (
 from app.ai.tools.routing import ROUTE_TO_AGENT_TOOL, ROUTE_TO_AGENT_TOOL_NAME
 
 # 专业 Agent 可用的工具（不含路由，防止递归）
-SPECIALIST_TOOLS: list[dict[str, object]] = [
+SPECIALIST_TOOLS: list[dict[str, Any]] = [
     HANDOFF_TOOL,
     ORDER_QUERY_TOOL,
     PAYMENT_QUERY_TOOL,
@@ -18,7 +20,7 @@ SPECIALIST_TOOLS: list[dict[str, object]] = [
 ]
 
 # 主 Agent 可用的全部工具（含路由）
-ALL_TOOLS: list[dict[str, object]] = SPECIALIST_TOOLS + [ROUTE_TO_AGENT_TOOL]
+ALL_TOOLS: list[dict[str, Any]] = SPECIALIST_TOOLS + [ROUTE_TO_AGENT_TOOL]
 
 QUERY_TOOL_NAMES: frozenset[str] = frozenset(
     [ORDER_QUERY_TOOL_NAME, PAYMENT_QUERY_TOOL_NAME, LOGISTICS_QUERY_TOOL_NAME]

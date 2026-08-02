@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './client'
+
 export interface OverviewStats {
   total_conversations: number
   today_conversations: number
@@ -15,13 +17,13 @@ export interface DailyStat {
 }
 
 export async function getOverview(): Promise<OverviewStats> {
-  const r = await fetch('/api/v1/stats/overview')
+  const r = await fetchWithAuth('/api/v1/stats/overview')
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
 
 export async function getDailyStats(days = 7): Promise<DailyStat[]> {
-  const r = await fetch(`/api/v1/stats/daily?days=${days}`)
+  const r = await fetchWithAuth(`/api/v1/stats/daily?days=${days}`)
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }

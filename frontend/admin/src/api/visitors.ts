@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './client'
+
 export interface Visitor {
   id: string
   external_userid: string
@@ -19,7 +21,7 @@ export async function getVisitors(params?: {
   if (params?.search) q.set('search', params.search)
   if (params?.tag) q.set('tag', params.tag)
   if (params?.limit) q.set('limit', String(params.limit))
-  const r = await fetch(`/api/v1/visitors${q.size ? `?${q}` : ''}`)
+  const r = await fetchWithAuth(`/api/v1/visitors${q.size ? `?${q}` : ''}`)
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
@@ -28,9 +30,8 @@ export async function updateVisitor(
   id: string,
   data: Partial<Pick<Visitor, 'name' | 'tags' | 'notes' | 'ai_disabled'>>
 ): Promise<Visitor> {
-  const r = await fetch(`/api/v1/visitors/${id}`, {
+  const r = await fetchWithAuth(`/api/v1/visitors/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)

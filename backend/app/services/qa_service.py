@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
 
 import structlog
 from sqlalchemy import or_, select
@@ -136,7 +137,7 @@ async def update_qa(
 
 
 async def delete_qa(db: AsyncSession, qa_id: uuid.UUID) -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
     result = await db.execute(
         select(QAPair).where(QAPair.id == qa_id, QAPair.deleted_at.is_(None))
     )
@@ -144,7 +145,7 @@ async def delete_qa(db: AsyncSession, qa_id: uuid.UUID) -> None:
     if not pair:
         from app.core.exceptions import NotFoundError
         raise NotFoundError(f"QAPair {qa_id} not found")
-    pair.deleted_at = datetime.now(timezone.utc)
+    pair.deleted_at = datetime.now(UTC)
     db.add(pair)
     await db.commit()
 

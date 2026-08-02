@@ -6,7 +6,9 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.deps import get_current_user
 from app.database import get_db
+from app.models.staff import Staff
 from app.schemas.workflow import WorkflowCreate, WorkflowResponse, WorkflowUpdate
 from app.services import workflow_service
 
@@ -17,6 +19,7 @@ router = APIRouter(prefix="/workflows", tags=["workflows"])
 async def list_workflows(
     include_inactive: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> list[WorkflowResponse]:
     workflows = await workflow_service.list_workflows(db, include_inactive=include_inactive)
     return [WorkflowResponse.model_validate(wf) for wf in workflows]
@@ -26,6 +29,7 @@ async def list_workflows(
 async def create_workflow(
     body: WorkflowCreate,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> WorkflowResponse:
     wf = await workflow_service.create_workflow(
         db,
@@ -41,6 +45,7 @@ async def create_workflow(
 async def get_workflow(
     workflow_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> WorkflowResponse:
     wf = await workflow_service.get_workflow(db, workflow_id)
     return WorkflowResponse.model_validate(wf)
@@ -51,6 +56,7 @@ async def update_workflow(
     workflow_id: uuid.UUID,
     body: WorkflowUpdate,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> WorkflowResponse:
     updates = body.model_dump(exclude_unset=True)
     if "definition" in updates and updates["definition"] is not None:
@@ -63,5 +69,6 @@ async def update_workflow(
 async def delete_workflow(
     workflow_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    _: Staff = Depends(get_current_user),
 ) -> None:
     await workflow_service.delete_workflow(db, workflow_id)

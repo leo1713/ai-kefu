@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 import httpx
 import structlog
@@ -200,7 +200,7 @@ async def delete_collection(db: AsyncSession, collection_id: uuid.UUID) -> None:
     )
     coll = result.scalar_one_or_none()
     if coll:
-        coll.deleted_at = datetime.utcnow()
+        coll.deleted_at = datetime.now(UTC)
         await db.commit()
 
 
@@ -220,5 +220,5 @@ async def delete_document(db: AsyncSession, document_id: uuid.UUID) -> None:
     )
     doc = result.scalar_one_or_none()
     if doc:
-        doc.deleted_at = datetime.utcnow()
+        doc.deleted_at = datetime.now(UTC)
         await db.commit()

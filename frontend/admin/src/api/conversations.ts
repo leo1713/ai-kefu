@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './client'
+
 export interface Conversation {
   id: string
   visitor_id: string
@@ -29,21 +31,20 @@ export interface Staff {
 
 export async function getConversations(status?: string): Promise<Conversation[]> {
   const url = status ? `/api/v1/conversations?status=${status}` : '/api/v1/conversations'
-  const r = await fetch(url)
+  const r = await fetchWithAuth(url)
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
 
 export async function getConversationMessages(conversationId: string): Promise<Message[]> {
-  const r = await fetch(`/api/v1/conversations/${conversationId}/messages`)
+  const r = await fetchWithAuth(`/api/v1/conversations/${conversationId}/messages`)
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
 
 export async function transferConversation(conversationId: string, reason: string): Promise<Conversation> {
-  const r = await fetch(`/api/v1/conversations/${conversationId}/transfer`, {
+  const r = await fetchWithAuth(`/api/v1/conversations/${conversationId}/transfer`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason }),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -51,9 +52,8 @@ export async function transferConversation(conversationId: string, reason: strin
 }
 
 export async function assignStaff(conversationId: string, staffId: string): Promise<Conversation> {
-  const r = await fetch(`/api/v1/conversations/${conversationId}/assign`, {
+  const r = await fetchWithAuth(`/api/v1/conversations/${conversationId}/assign`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ staff_id: staffId }),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -61,7 +61,7 @@ export async function assignStaff(conversationId: string, staffId: string): Prom
 }
 
 export async function getStaffList(includeInactive = false): Promise<Staff[]> {
-  const r = await fetch(`/api/v1/staff?include_inactive=${includeInactive}`)
+  const r = await fetchWithAuth(`/api/v1/staff?include_inactive=${includeInactive}`)
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
@@ -72,9 +72,8 @@ export async function createStaff(data: {
   password: string
   wecom_userid?: string
 }): Promise<Staff> {
-  const r = await fetch('/api/v1/staff', {
+  const r = await fetchWithAuth('/api/v1/staff', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
   if (!r.ok) {
@@ -85,15 +84,16 @@ export async function createStaff(data: {
 }
 
 export async function closeConversation(conversationId: string): Promise<Conversation> {
-  const r = await fetch(`/api/v1/conversations/${conversationId}/close`, { method: 'PATCH' })
+  const r = await fetchWithAuth(`/api/v1/conversations/${conversationId}/close`, {
+    method: 'PATCH',
+  })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
 
 export async function updateStaffStatus(staffId: string, isActive: boolean): Promise<Staff> {
-  const r = await fetch(`/api/v1/staff/${staffId}`, {
+  const r = await fetchWithAuth(`/api/v1/staff/${staffId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ is_active: isActive }),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -101,9 +101,8 @@ export async function updateStaffStatus(staffId: string, isActive: boolean): Pro
 }
 
 export async function replyMessage(conversationId: string, content: string): Promise<Message> {
-  const r = await fetch(`/api/v1/conversations/${conversationId}/reply`, {
+  const r = await fetchWithAuth(`/api/v1/conversations/${conversationId}/reply`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)

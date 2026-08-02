@@ -45,12 +45,11 @@ async def list_all(
                 Visitor.name.ilike(pattern),
             )
         )
-    result = await db.execute(stmt)
-    visitors = list(result.scalars().all())
     if tag:
-        # JSON contains filter done in Python (portable across PG versions)
-        visitors = [v for v in visitors if tag in (v.tags or [])]
-    return visitors
+        # PostgreSQL JSON contains：tags @> '["<tag>"]'
+        stmt = stmt.where(Visitor.tags.contains([tag]))
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
 
 
 async def update_visitor(

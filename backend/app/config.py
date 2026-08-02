@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     # Encryption key for storing sensitive data (Fernet)
     encryption_key: str = ""
 
+    # Admin bootstrap — init-admin 接口受此 flag 控制
+    # 设为 true 后 init-admin 才能执行，执行完毕后应改回 false 或删除
+    allow_init_admin: bool = False
+    # 默认管理员密码，留空则 init-admin 拒绝执行
+    default_admin_password: str = ""
+
     # WeCom
     wecom_corp_id: str = ""
     wecom_agent_id: str = ""

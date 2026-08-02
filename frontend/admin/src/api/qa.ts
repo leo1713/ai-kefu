@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './client'
+
 export interface QAPair {
   id: string
   question: string
@@ -18,15 +20,16 @@ export async function listQA(params?: {
   if (params?.search) q.set('search', params.search)
   if (params?.category) q.set('category', params.category)
   if (params?.include_inactive) q.set('include_inactive', 'true')
-  const r = await fetch(`/api/v1/qa${q.size ? `?${q}` : ''}`)
+  const r = await fetchWithAuth(`/api/v1/qa${q.size ? `?${q}` : ''}`)
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
 
-export async function createQA(data: Omit<QAPair, 'id' | 'created_at' | 'updated_at'>): Promise<QAPair> {
-  const r = await fetch('/api/v1/qa', {
+export async function createQA(
+  data: Omit<QAPair, 'id' | 'created_at' | 'updated_at'>
+): Promise<QAPair> {
+  const r = await fetchWithAuth('/api/v1/qa', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -34,9 +37,8 @@ export async function createQA(data: Omit<QAPair, 'id' | 'created_at' | 'updated
 }
 
 export async function updateQA(id: string, data: Partial<QAPair>): Promise<QAPair> {
-  const r = await fetch(`/api/v1/qa/${id}`, {
+  const r = await fetchWithAuth(`/api/v1/qa/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -44,16 +46,15 @@ export async function updateQA(id: string, data: Partial<QAPair>): Promise<QAPai
 }
 
 export async function deleteQA(id: string): Promise<void> {
-  const r = await fetch(`/api/v1/qa/${id}`, { method: 'DELETE' })
+  const r = await fetchWithAuth(`/api/v1/qa/${id}`, { method: 'DELETE' })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
 }
 
 export async function batchImportQA(
   items: Array<{ question: string; answer: string; keywords?: string[]; category?: string }>
 ): Promise<{ imported: number }> {
-  const r = await fetch('/api/v1/qa/batch', {
+  const r = await fetchWithAuth('/api/v1/qa/batch', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ items }),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)

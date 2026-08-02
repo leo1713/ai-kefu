@@ -36,12 +36,15 @@ from app.services.workflow_executor import execute_workflow
 
 logger = structlog.get_logger()
 
-_specialist_cache: dict[str, Agent] | None = None
+# 专家 Agent 缓存：只缓存轻量字段，不缓存 ORM 对象（避免 Session 关闭后访问报错）
+_SpecialistInfo = dict[str, object]  # keys: slug, name, system_prompt, model, max_tokens
+
+_specialist_cache: dict[str, _SpecialistInfo] | None = None
 _specialist_cache_time: float = 0.0
 _SPECIALIST_CACHE_TTL = 60.0
 
 
-async def _get_specialist_agents(db: AsyncSession) -> dict[str, Agent]:
+async def _get_specialist_agents(db: AsyncSession) -> dict[str, _SpecialistInfo]:
     global _specialist_cache, _specialist_cache_time
     now = time.monotonic()
     if _specialist_cache is not None and now - _specialist_cache_time < _SPECIALIST_CACHE_TTL:
@@ -50,7 +53,17 @@ async def _get_specialist_agents(db: AsyncSession) -> dict[str, Agent]:
         select(Agent).where(Agent.slug.is_not(None), Agent.deleted_at.is_(None))
     )
     agents = result.scalars().all()
-    _specialist_cache = {a.slug: a for a in agents if a.slug}
+    _specialist_cache = {
+        a.slug: {
+            "slug": a.slug,
+            "name": a.name,
+            "system_prompt": a.system_prompt,
+            "model": a.model,
+            "max_tokens": a.max_tokens,
+        }
+        for a in agents
+        if a.slug
+    }
     _specialist_cache_time = now
     return _specialist_cache
 
@@ -104,7 +117,7 @@ async def chat_stream(
     agent = await seed_default_agent(db)
 
     history = await conversation_service.get_recent_messages(db, conv.id, limit=20)
-    messages: list[dict[str, str]] = [
+    messages: list[dict[str, object]] = [
         {"role": msg.role, "content": msg.content} for msg in history
     ]
     messages.append({"role": "user", "content": message})
@@ -175,7 +188,7 @@ async def chat_stream(
     )
 
     # --- agentic tool loop (max 5 iterations) ---
-    loop_messages = list(messages)
+    loop_messages: list[dict[str, object]] = list(messages)
     full_text = ""
     last_tool_call = None
 
@@ -183,7 +196,7 @@ async def chat_stream(
         try:
             text_gen, tool_result = await client.stream_with_tools(
                 messages=loop_messages,
-                tools=ALL_TOOLS,  # type: ignore[arg-type]
+                tools=ALL_TOOLS,
                 system=system_prompt,
                 model=agent.model,
                 max_tokens=agent.max_tokens,
@@ -267,7 +280,7 @@ async def chat_stream(
                 "content": [{
                     "type": "tool_result",
                     "tool_use_id": last_tool_call.tool_use_id,
-                    "content": f"已切换到{specialist.name}，请为用户提供专业服务。",
+                    "content": f"已切换到{specialist['name']}，请为用户提供专业服务。",
                 }],
             })
 
@@ -275,8 +288,8 @@ async def chat_stream(
                 try:
                     spec_gen, spec_result = await client.stream_with_tools(
                         messages=loop_messages,
-                        tools=SPECIALIST_TOOLS,  # type: ignore[arg-type]
-                        system=specialist.system_prompt,
+                        tools=SPECIALIST_TOOLS,
+                        system=str(specialist["system_prompt"]),
                         model=agent.model,
                         max_tokens=agent.max_tokens,
                     )

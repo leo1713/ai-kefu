@@ -42,7 +42,7 @@ async def get_workflow(db: AsyncSession, workflow_id: uuid.UUID) -> Workflow:
 async def create_workflow(
     db: AsyncSession,
     name: str,
-    definition: dict,
+    definition: dict[str, object],
     description: str | None = None,
     trigger_keywords: list[str] | None = None,
 ) -> Workflow:

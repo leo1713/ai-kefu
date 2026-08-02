@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import json
-import xml.etree.ElementTree as ET
 from typing import Any
 
+import defusedxml.ElementTree as ET
 import structlog
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.integrations.wecom.client import WeComClient
 from app.integrations.wecom.crypto import WeComCrypto
-from app.services import conversation_service, visitor_service
+from app.models.conversation import Conversation
+from app.models.message import Message
+from app.models.staff import Staff
+from app.services import visitor_service
 from app.services.chat_service import chat_stream
 from app.websocket.manager import manager
 
@@ -33,6 +37,7 @@ def get_client() -> WeComClient:
 
 
 def parse_xml(xml_str: str) -> dict[str, Any]:
+    """安全解析 XML，使用 defusedxml 防止 XML bomb 攻击。"""
     root = ET.fromstring(xml_str)
     return {child.tag: (child.text or "") for child in root}
 
@@ -66,7 +71,6 @@ async def notify_staff_handoff(
             visitor=visitor_external_userid,
         )
     except Exception as e:
-        # 通知失败不影响主流程
         logger.warning("wecom_staff_notify_failed", error=str(e))
 
 
@@ -89,8 +93,6 @@ async def handle_message(db: AsyncSession, xml_body: str) -> None:
 
     # 检查访客当前会话是否已转人工
     visitor = await visitor_service.get_or_create(db, from_user)
-    from sqlalchemy import select
-    from app.models.conversation import Conversation
     result = await db.execute(
         select(Conversation)
         .where(
@@ -104,7 +106,6 @@ async def handle_message(db: AsyncSession, xml_body: str) -> None:
 
     if current_conv and current_conv.status == "transferred":
         # 会话已转人工：消息写入数据库，不 AI 回复，通知客服
-        from app.models.message import Message
         visitor_msg = Message(
             conversation_id=current_conv.id,
             role="user",
@@ -137,12 +138,9 @@ async def handle_message(db: AsyncSession, xml_body: str) -> None:
                 },
             )
 
-        # 如果有分配的客服且有企业微信ID，推送通知
-        if current_conv.assigned_staff_id:
-            from sqlalchemy import select as sa_select
-            from app.models.staff import Staff
+            # 推送企微通知给客服
             staff_result = await db.execute(
-                sa_select(Staff).where(Staff.id == current_conv.assigned_staff_id)
+                select(Staff).where(Staff.id == current_conv.assigned_staff_id)
             )
             staff = staff_result.scalar_one_or_none()
             if staff and staff.wecom_userid:
@@ -188,7 +186,6 @@ async def handle_message(db: AsyncSession, xml_body: str) -> None:
     wecom_client = get_client()
 
     if handoff_triggered:
-        # 转人工：发送转接提示给访客
         transfer_notice = full_reply or "您的问题已转接给人工客服，请稍候，客服人员将很快为您服务。"
         await wecom_client.send_text(
             to_user=from_user,
@@ -196,7 +193,7 @@ async def handle_message(db: AsyncSession, xml_body: str) -> None:
             content=transfer_notice,
         )
 
-        # 重新查询以获取最新的分配状态
+        # 重新查询获取最新分配状态
         result2 = await db.execute(
             select(Conversation)
             .where(
@@ -208,10 +205,8 @@ async def handle_message(db: AsyncSession, xml_body: str) -> None:
         )
         updated_conv = result2.scalar_one_or_none()
         if updated_conv and updated_conv.assigned_staff_id:
-            from sqlalchemy import select as sa_select2
-            from app.models.staff import Staff
             staff_result2 = await db.execute(
-                sa_select2(Staff).where(Staff.id == updated_conv.assigned_staff_id)
+                select(Staff).where(Staff.id == updated_conv.assigned_staff_id)
             )
             staff2 = staff_result2.scalar_one_or_none()
             if staff2 and staff2.wecom_userid:

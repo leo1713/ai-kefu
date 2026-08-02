@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import WebSocket
-
 import structlog
+from fastapi import WebSocket
 
 logger = structlog.get_logger()
 

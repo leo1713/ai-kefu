@@ -1,5 +1,3 @@
-import base64
-import os
 from datetime import UTC
 
 from cryptography.fernet import Fernet
@@ -12,7 +10,14 @@ def _get_fernet() -> Fernet:
     if _fernet_instance is not None:
         return _fernet_instance
     from app.config import settings
-    key = settings.encryption_key or base64.urlsafe_b64encode(os.urandom(32)).decode()
+    from app.core.exceptions import AppException
+
+    key = settings.encryption_key
+    if not key:
+        raise AppException(
+            "ENCRYPTION_KEY 未配置。请在 .env 中设置 ENCRYPTION_KEY（Fernet base64 key）。"
+            " 生成命令：python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        )
     _fernet_instance = Fernet(key.encode() if isinstance(key, str) else key)
     return _fernet_instance
 
@@ -39,8 +44,12 @@ def create_access_token(data: dict[str, object]) -> str:
 
 
 def decode_access_token(token: str) -> dict[str, object]:
-    from jose import jwt
+    from jose import JWTError, jwt
 
     from app.config import settings
+    from app.core.exceptions import AuthenticationError
 
-    return dict(jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm]))
+    try:
+        return dict(jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm]))
+    except JWTError as e:
+        raise AuthenticationError("token 无效或已过期") from e

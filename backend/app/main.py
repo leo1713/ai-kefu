@@ -23,10 +23,19 @@ from app.core.exceptions import AppException
 from app.core.logging import configure_logging, logger
 from app.core.middleware import RequestLoggingMiddleware
 
+_INSECURE_SECRET_KEY = "changeme-in-production"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_logging(debug=settings.debug)
+    # S-05: 非 debug 模式下拒绝使用默认 secret_key，避免签名伪造
+    if not settings.debug and settings.secret_key == _INSECURE_SECRET_KEY:
+        raise RuntimeError(
+            "SECRET_KEY 使用了默认值，生产环境禁止启动。"
+            " 请在 .env 中设置随机强密钥。"
+            " 生成命令：python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
     logger.info("startup", app=settings.app_name)
     yield
     logger.info("shutdown")
@@ -59,8 +68,43 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+async def health() -> JSONResponse:
+    """
+    健康检查。检查 DB 和 Redis 连通性，全部正常返回 200，任意失败返回 503。
+    """
+    from sqlalchemy import text
+
+    from app.database import engine
+
+    checks: dict[str, str] = {}
+
+    # DB ping
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        checks["db"] = "ok"
+    except Exception as e:
+        logger.warning("health_db_failed", error=str(e))
+        checks["db"] = f"error: {e}"
+
+    # Redis ping
+    try:
+        import redis.asyncio as aioredis
+
+        r = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
+        await r.ping()
+        await r.aclose()  # type: ignore[attr-defined]
+        checks["redis"] = "ok"
+    except Exception as e:
+        logger.warning("health_redis_failed", error=str(e))
+        checks["redis"] = f"error: {e}"
+
+    all_ok = all(v == "ok" for v in checks.values())
+    status_code = 200 if all_ok else 503
+    return JSONResponse(
+        status_code=status_code,
+        content={"status": "ok" if all_ok else "degraded", **checks},
+    )
 
 
 app.include_router(auth_router, prefix="/api/v1")

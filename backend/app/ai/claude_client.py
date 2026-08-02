@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from anthropic import APIConnectionError, APIStatusError, APITimeoutError, AsyncAnthropic
@@ -100,12 +100,12 @@ class ClaudeClient:
 
     async def stream_with_tools(
         self,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, object]],
         tools: list[dict[str, Any]],
         system: str = "",
         model: str = "claude-sonnet-4-20250514",
         max_tokens: int = 2000,
-    ) -> tuple[AsyncGenerator[str, None], "StreamWithToolResult"]:
+    ) -> tuple[AsyncGenerator[str, None], StreamWithToolResult]:
         """
         流式调用 + 工具支持。
 
@@ -142,7 +142,7 @@ class ClaudeClient:
                         if block.type == "tool_use":
                             result.tool_call = ToolCallResult(
                                 tool_name=block.name,
-                                tool_input=dict(block.input),  # type: ignore[arg-type]
+                                tool_input=cast(dict[str, Any], block.input),
                                 tool_use_id=block.id,
                             )
                             break

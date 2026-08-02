@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -70,8 +69,10 @@ async def test_transfer_conversation_updates_status() -> None:
 
     scalar_mock = MagicMock()
     scalar_mock.scalar_one_or_none = MagicMock(return_value=conv)
-    scalars_mock = MagicMock()
-    scalars_mock.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+
+    # 新实现：第2次查 Staff.id，用 .all()；无客服时返回空列表
+    no_staff_result = MagicMock()
+    no_staff_result.all = MagicMock(return_value=[])
 
     call_count = 0
 
@@ -80,7 +81,7 @@ async def test_transfer_conversation_updates_status() -> None:
         call_count += 1
         if call_count == 1:
             return scalar_mock  # 查 Conversation
-        return scalars_mock    # 查 Staff 列表（空）
+        return no_staff_result  # 查 Staff.id（空）→ _auto_assign_staff 返回 None
 
     db.execute = _execute
 
@@ -102,8 +103,9 @@ async def test_transfer_conversation_truncates_long_reason() -> None:
 
     scalar_mock = MagicMock()
     scalar_mock.scalar_one_or_none = MagicMock(return_value=conv)
-    scalars_mock = MagicMock()
-    scalars_mock.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))
+
+    no_staff_result = MagicMock()
+    no_staff_result.all = MagicMock(return_value=[])
 
     call_count = 0
 
@@ -112,7 +114,7 @@ async def test_transfer_conversation_truncates_long_reason() -> None:
         call_count += 1
         if call_count == 1:
             return scalar_mock
-        return scalars_mock
+        return no_staff_result
 
     db.execute = _execute
 
@@ -145,21 +147,23 @@ async def test_transfer_conversation_auto_assigns_staff() -> None:
     db = AsyncMock()
     db.add = MagicMock()
 
-    # 第1次 execute：查 Conversation → 返回 conv
-    # 第2次 execute：查 Staff 列表 → 返回 [staff]
-    # 第3次 execute：查该客服当前 transferred 会话数 → 返回 []（0条）
-    scalars_with_staff = MagicMock()
-    scalars_with_staff.scalars = MagicMock(
-        return_value=MagicMock(all=MagicMock(return_value=[staff]))
-    )
-
-    empty_scalars = MagicMock()
-    empty_scalars.scalars = MagicMock(
-        return_value=MagicMock(all=MagicMock(return_value=[]))
-    )
+    # execute 调用顺序（新 GROUP BY 实现）：
+    # 1. select(Conversation) → scalar_one_or_none → conv
+    # 2. select(Staff.id)     → .all() → [(staff.id,)]
+    # 3. select(count).group_by → .all() → []（无转人工会话）
+    # 4. select(Staff).where(id=chosen) → scalar_one_or_none → staff
 
     scalar_conv = MagicMock()
     scalar_conv.scalar_one_or_none = MagicMock(return_value=conv)
+
+    staff_ids_result = MagicMock()
+    staff_ids_result.all = MagicMock(return_value=[(staff.id,)])
+
+    load_result = MagicMock()
+    load_result.all = MagicMock(return_value=[])  # 无负载记录 → load_map 为空
+
+    chosen_result = MagicMock()
+    chosen_result.scalar_one_or_none = MagicMock(return_value=staff)
 
     call_count = 0
 
@@ -169,8 +173,10 @@ async def test_transfer_conversation_auto_assigns_staff() -> None:
         if call_count == 1:
             return scalar_conv
         if call_count == 2:
-            return scalars_with_staff
-        return empty_scalars  # 负载查询
+            return staff_ids_result
+        if call_count == 3:
+            return load_result
+        return chosen_result
 
     db.execute = _execute
 
@@ -266,11 +272,10 @@ async def test_auto_assign_no_staff_returns_none() -> None:
     from app.services.conversation_service import _auto_assign_staff
 
     db = AsyncMock()
-    scalars_empty = MagicMock()
-    scalars_empty.scalars = MagicMock(
-        return_value=MagicMock(all=MagicMock(return_value=[]))
-    )
-    db.execute = AsyncMock(return_value=scalars_empty)
+    # 新实现：select(Staff.id) → .all() → []
+    empty_result = MagicMock()
+    empty_result.all = MagicMock(return_value=[])
+    db.execute = AsyncMock(return_value=empty_result)
 
     result = await _auto_assign_staff(db, uuid.uuid4())
     assert result is None
@@ -285,36 +290,32 @@ async def test_auto_assign_picks_least_loaded_staff() -> None:
     staff_b = _make_staff()
     staff_b.id = uuid.uuid4()
 
-    # staff_a 有 2 个进行中会话，staff_b 有 0 个
-    conv_1 = _make_conv(status="transferred")
-    conv_2 = _make_conv(status="transferred")
-
     db = AsyncMock()
+
+    # execute 调用顺序（新 GROUP BY 实现）：
+    # 1. select(Staff.id) → .all() → [(staff_a.id,), (staff_b.id,)]
+    # 2. select(count).group_by → .all() → [(staff_a.id, 2)]  （staff_b 无记录=0）
+    # 3. select(Staff).where(id==staff_b.id) → scalar_one_or_none → staff_b
+
+    staff_ids_result = MagicMock()
+    staff_ids_result.all = MagicMock(return_value=[(staff_a.id,), (staff_b.id,)])
+
+    load_result = MagicMock()
+    load_result.all = MagicMock(return_value=[(staff_a.id, 2)])  # staff_a 有2个
+
+    chosen_result = MagicMock()
+    chosen_result.scalar_one_or_none = MagicMock(return_value=staff_b)
+
     call_count = 0
-
-    scalars_staff_list = MagicMock()
-    scalars_staff_list.scalars = MagicMock(
-        return_value=MagicMock(all=MagicMock(return_value=[staff_a, staff_b]))
-    )
-
-    scalars_a_convs = MagicMock()
-    scalars_a_convs.scalars = MagicMock(
-        return_value=MagicMock(all=MagicMock(return_value=[conv_1, conv_2]))
-    )
-
-    scalars_b_convs = MagicMock()
-    scalars_b_convs.scalars = MagicMock(
-        return_value=MagicMock(all=MagicMock(return_value=[]))
-    )
 
     async def _execute(stmt: object) -> MagicMock:
         nonlocal call_count
         call_count += 1
         if call_count == 1:
-            return scalars_staff_list
+            return staff_ids_result
         if call_count == 2:
-            return scalars_a_convs  # staff_a 的负载
-        return scalars_b_convs      # staff_b 的负载
+            return load_result
+        return chosen_result
 
     db.execute = _execute
 

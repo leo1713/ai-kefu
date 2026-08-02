@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './client'
+
 interface Agent {
   id: string
   name: string
@@ -21,15 +23,14 @@ interface AgentUpdate {
 }
 
 export async function listAgents(): Promise<Agent[]> {
-  const r = await fetch('/api/v1/agents')
+  const r = await fetchWithAuth('/api/v1/agents')
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json()
 }
 
 export async function updateAgent(agentId: string, data: AgentUpdate): Promise<Agent> {
-  const r = await fetch(`/api/v1/agents/${agentId}`, {
+  const r = await fetchWithAuth(`/api/v1/agents/${agentId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
   if (!r.ok) {
