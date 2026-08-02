@@ -3,7 +3,8 @@ import { fetchWithAuth } from './client'
 export interface WorkflowNode {
   id: string
   type: 'send_message' | 'condition' | 'tool_call' | 'end' | 'llm'
-  data: Record<string, unknown>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: Record<string, any>
   next?: string | null
   next_true?: string | null
   next_false?: string | null
